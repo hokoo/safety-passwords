@@ -1,0 +1,45 @@
+{
+  "name": "hokoo/safety-passwords-infra",
+  "description": "",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Igor Tron",
+      "email": "root@itron.pro"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://wpackagist.org"
+    }
+  ],
+  "require": {
+    "johnpbloch/wordpress-core-installer": "*",
+    "composer/installers": "*",
+    "johnpbloch/wordpress": "*",
+    "wpackagist-plugin/wp-smtp": "*",
+    "johnbillion/query-monitor": "^3.7",
+    "wpackagist-plugin/wp-data-logger": "^2.0"
+  },
+  "autoload": {
+  },
+  "extra": {
+    "installer-paths": {
+      "wordpress/wp-content/plugins/{$name}": [
+        "type:wordpress-plugin"
+      ]
+    }
+  },
+  "scripts": {
+    "pre-install-cmd": [],
+    "post-install-cmd": ["bash ./dev/setup.sh"],
+    "da": ["composer dump-autoload -o"]
+  },
+  "config": {
+    "allow-plugins": {
+      "composer/installers": true,
+      "johnpbloch/wordpress-core-installer": true
+    }
+  }
+}

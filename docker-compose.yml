@@ -1,0 +1,69 @@
+version: "3"
+
+services:
+  mysql:
+    container_name: "${PROJECT_NAME}_mysql"
+    image: mysql:5.7
+    stop_grace_period: 30s
+    volumes:
+      - ~/mysql-data/itron/safety-passwords:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: $DB_ROOT_PASSWORD
+      MYSQL_DATABASE: $DB_NAME
+      MYSQL_USER: $DB_USER
+      MYSQL_PASSWORD: $DB_PASSWORD
+    ports:
+      - "3066:3306"
+    networks:
+      - safety-passwords
+
+  php:
+    build:
+      context: ./dev/php-fpm
+      args:
+        PHP_VER: $PHP_VERSION
+    container_name: "${PROJECT_NAME}_php"
+    extra_hosts:
+      - "safetypasswords.local:host-gateway"
+    environment:
+      PHP_SENDMAIL_PATH: /usr/sbin/sendmail -t -i -S mailhog:1025
+      DB_HOST: $DB_HOST
+      DB_USER: $DB_USER
+      DB_PASSWORD: $DB_PASSWORD
+      DB_NAME: $DB_NAME
+      PHP_FPM_USER: wodby
+      PHP_FPM_GROUP: wodby
+      PHP_IDE_CONFIG: $XDEBUG_IDE_CONFIG
+      PHP_XDEBUG: 1
+      PHP_XDEBUG_DEFAULT_ENABLE: 1
+      PHP_XDEBUG_CLIENT_HOST: host.docker.internal
+      PHP_XDEBUG_CLIENT_PORT: $XDEBUG_PORT
+      PHP_XDEBUG_MODE: $XDEBUG_MODE
+      PHP_XDEBUG_IDEKEY: $XDEBUG_IDE_KEY
+      PHP_XDEBUG_START_WITH_REQUEST: yes
+      PHP_XDEBUG_LOG: /srv/web/xdebug.log
+      PHP_EXTENSIONS_DISABLE: $EXTENSIONS_DISABLE
+    volumes:
+      - ./:/srv/web/
+    networks:
+      - safety-passwords
+
+  nginx:
+    container_name: "${PROJECT_NAME}_nginx"
+    image: nginx:alpine
+    working_dir: /srv/web/
+    depends_on:
+      - php
+    volumes:
+      - ./:/srv/web/
+      - ./dev/nginx/nginx.conf:/etc/nginx/conf.d/nginx.conf
+      - ./dev/nginx/ssl/:/etc/nginx/ssl/
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - safety-passwords
+
+networks:
+  safety-passwords:
+    driver: bridge

@@ -1,0 +1,26 @@
+{
+  "name": "hokoo/safety-passwords",
+  "description": "",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Igor Tron",
+      "email": "root@itron.pro"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://wpackagist.org"
+    }
+  ],
+  "require": {
+    "ext-json": "*",
+    "htmlburger/carbon-fields": "^3"
+  },
+  "autoload": {
+    "psr-4": {
+      "iTRON\\SafetyPasswords\\": "src"
+    }
+  }
+}
