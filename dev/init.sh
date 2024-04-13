@@ -16,7 +16,7 @@ fi
 echo "nginx.conf ..."
 if [ ! -f ./dev/nginx/nginx.conf ]; then
   NGINXCONFIG=$(< ./dev/templates/nginx.conf.template)
-  printf "$NGINXCONFIG" $PROJECT_BASE_URL $PROJECT_BASE_URL $PROJECT_BASE_URL $PROJECT_BASE_URL $PROJECT_BASE_URL $PROJECT_BASE_URL > ./dev/nginx/nginx.conf
+  printf "$NGINXCONFIG" $WP_DOMAIN $WP_DOMAIN $WP_DOMAIN $WP_DOMAIN $WP_DOMAIN $WP_DOMAIN > ./dev/nginx/nginx.conf
 fi
 echo "Ok."
 

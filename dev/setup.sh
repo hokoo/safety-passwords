@@ -9,11 +9,11 @@ cd ./plugin-dir && composer install && cd ../
 
 # prepare file structure
 echo -e "${RCYAN}Create wp-config.php from example${COLOR_OFF}"
-if [ ! -f ./wordpress/wp-config.php ]; then
+if [ ! -f ./wp-config.php ]; then
     printf "File wp-config.php doesn't exist. Recreating... "
 
     WPCONFIG=$(< ./dev/templates/wp-config.php.template)
-    printf "$WPCONFIG" $PROJECT_BASE_URL $PROJECT_BASE_URL > ./wordpress/wp-config.php
+    printf "$WPCONFIG" $WP_DOMAIN $WP_DOMAIN $WP_DOMAIN > ./wp-config.php
 
     echo -e "${RGREEN}Ok.${COLOR_OFF}"
 else
@@ -36,7 +36,7 @@ cd ./wordpress
 wp db export 2>/dev/null
 wp db reset --yes && \
 echo -e "${RCYAN}WP is getting installed & configured${COLOR_OFF}"
-wp core install --url=$PROJECT_BASE_URL --title="${WP_TITLE}" --admin_user=$WP_ADMIN_USER --admin_password=$WP_ADMIN_PASS --admin_email=$WP_ADMIN_EMAIL --skip-email
+wp core install --url=https://$WP_DOMAIN --title="${WP_TITLE}" --admin_user=$WP_ADMIN_USER --admin_password=$WP_ADMIN_PASS --admin_email=$WP_ADMIN_EMAIL --skip-email
 wp plugin delete akismet hello && \
 wp plugin activate --all
 

@@ -3,27 +3,11 @@
 namespace iTRON\SafetyPasswords;
 
 class Controller {
-	public static function init() {
+	public static function init(): void {
 		add_action( 'user_register', [ self::class, "set_force_password_change_flag" ], 20, 1 );
 		add_filter( 'login_redirect', [ self::class, 'login_redirect' ], 10, 3 );
 		add_action( 'user_profile_update_errors', [ self::class, 'user_profile_update_errors' ], 99, 3 );
 		add_action( "validate_password_reset", [ self::class, "validate_password_reset" ], 99, 2 );
-	}
-
-	public static function user_profile_update_errors( \WP_Error $errors, $update, $user ): \WP_Error {
-		if ( ! $update ) {
-			return $errors;
-		}
-
-		if ( ! empty( $_POST["pass1"] ) ) {
-			if ( ! self::is_password_secure( $_POST["pass1"] ) ) {
-				$errors->add( 'pass', self::get_weak_password_message() );
-			}
-
-			return $errors;
-		}
-
-		return $errors;
 	}
 
 	public static function login_redirect( $redirect, $requested_redirect_to, $user ) {
@@ -40,7 +24,7 @@ class Controller {
 			}
 
 			// Check if user needs to reset password
-			if ( "1" === get_user_meta( $user->ID, 'safetypasswords_need_reset_password', true ) ) {
+			if ( "1" === get_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited', true ) ) {
 				// User needs to reset password
 				add_filter( 'wp_login_errors', function ( $errors ) {
 					$errors->errors = [];
@@ -53,30 +37,19 @@ class Controller {
 			return $redirect;
 		}
 
-		if ( "1" === get_user_meta( $user->ID, 'safetypasswords_force_password_change_after_registration', true ) ) {
-			reset_password( $user, wp_generate_password( 24 ) );
-			$key = get_password_reset_key( $user );
+		if ( "1" === get_user_meta( $user->ID, Settings::$optionPrefix . 'fpr_registration', true ) ) {
+			$reset_key = '';
 
-			// Send email with password reset link
-			$subject = wp_specialchars_decode( get_option( 'blogname' ), ENT_QUOTES ) . ' - ' . __( 'Password Reset',
-					'safety-passwords' );
-			$message = sprintf(
-				__( "Dear %s!\r\nYou were asked to reset your password.\r\nIf you didn't managed do it till now, please, visit the following address: <%s>",
-					'safety-passwords' ),
-				$user->user_login,
-				network_site_url( "wp-login.php?action=rp&key=$key&login=" . rawurlencode( $user->user_login ),
-					'login' )
-			);
-			if ( $message && ! wp_mail( $user->user_email, wp_specialchars_decode( $subject ), $message ) ) {
+			if ( true !== self::retrievePassword( $user, true, $reset_key ) ) {
 				wp_die(
-					__( 'The e-mail could not be sent. Possible reason: your host may have disabled the mail() function.',
+					__( 'Something went wrong when trying to reset your password. Please, try again later.',
 						'safety-passwords' )
 				);
 			}
-			delete_user_meta( $user->ID, 'safetypasswords_force_password_change_after_registration' );
-			update_user_meta( $user->ID, 'safetypasswords_need_reset_password', 1 );
 
-			return network_site_url( "wp-login.php?action=rp&key=$key&login=" . rawurlencode( $user->user_login ),
+			delete_user_meta( $user->ID, Settings::$optionPrefix . 'fpr_registration' );
+
+			return network_site_url( "wp-login.php?action=rp&key=$reset_key&login=" . rawurlencode( $user->user_login ),
 				'login' );
 		}
 
@@ -84,7 +57,25 @@ class Controller {
 	}
 
 	public static function set_force_password_change_flag( $user_id ): void {
-		update_user_meta( $user_id, 'safetypasswords_force_password_change_after_registration', 1 );
+		if ( ! Settings::getOption( 'fpr_on_registration' ) ) {
+			return;
+		}
+
+		update_user_meta( $user_id, Settings::$optionPrefix . 'fpr_registration', 1 );
+	}
+
+	public static function user_profile_update_errors( \WP_Error $errors, $update, $user ): \WP_Error {
+		if ( ! empty( $_POST["pass1"] ) ) {
+			if ( ! self::is_password_secure( $_POST["pass1"] ) ) {
+				$errors->add( 'pass', self::get_weak_password_message() );
+			}
+
+			update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
+
+			return $errors;
+		}
+
+		return $errors;
 	}
 
 	public static function validate_password_reset( $errors, $user = null ) {
@@ -99,7 +90,8 @@ class Controller {
 
 			if ( ! $errors->get_error_data( "pass" ) ) {
 				// Password is secure, remove the flag
-				delete_user_meta( $user->ID, 'safetypasswords_need_reset_password' );
+				delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
+				update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
 			}
 
 			return $errors;
@@ -109,7 +101,7 @@ class Controller {
 	}
 
 	public static function is_password_secure( $i ): bool {
-		$length      = strlen( $i ) > 10;
+		$length      = strlen( $i ) >= Settings::getOption( 'min_len' );
 		$has_lower   = preg_match( '/[a-z]/', $i );
 		$has_upper   = preg_match( '/[A-Z]/', $i );
 		$has_number  = preg_match( '/[0-9]/', $i );
@@ -140,5 +132,42 @@ class Controller {
 			"<strong>",
 			"</strong>"
 		);
+	}
+
+	public static function findExpiringPasswords(): void {
+		if ( ! Settings::getInterval() ) {
+			return;
+		}
+
+		shell_exec( "wp safety check-users" );
+
+	}
+
+	public static function retrievePassword( $user, $skip_email = false, &$reset_key = '' ) {
+		add_filter( 'retrieve_password_message', function ( $message, $key, $login, $user_data ) use ( $user, $skip_email, &$reset_key ) {
+			if ( $login !== $user->user_login ) {
+				return $message;
+			}
+
+			$reset_key = $key;
+
+			if ( $skip_email ) {
+				return '';
+			}
+
+			return sprintf(
+				__( "Dear %s!\r\nYou were asked to reset your password.\r\nIf you didn't managed do it till now, please, visit the following address: <%s>",
+					'safety-passwords' ),
+				$user->user_login,
+				network_site_url( "wp-login.php?action=rp&key=$key&login=" . rawurlencode( $login ), 'login' ) . '&wp_lang=' . get_user_locale( $user_data )
+			);
+		}, 99, 4 );
+
+		$result = retrieve_password( $user->user_login );
+		if ( true === $result ) {
+			update_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited', 1 );
+		}
+
+		return $result;
 	}
 }

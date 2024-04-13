@@ -1,7 +1,24 @@
 <?php
-const WP_SITEURL = '%s';
-const WP_HOME = '%s';
+const WP_SITEURL = 'https://%s';
+const WP_HOME = 'https://%s';
 
+const SAFETY_PASSWORDS_FPR_AFTER_REGISTRATION = false;
+const SAFETY_PASSWORDS_MIN_LEN = 10;
+const SAFETY_PASSWORDS_RESET_INTERVAL = 30;
+
+
+// Multisite mode
+//define( 'DB_NAME', 'safety-passwords-ms' );
+//define( 'WP_ALLOW_MULTISITE', true );
+//define( 'MULTISITE', true );
+//define( 'SUBDOMAIN_INSTALL', false );
+//define( 'DOMAIN_CURRENT_SITE', '%s' );
+//define( 'PATH_CURRENT_SITE', '/' );
+//define( 'SITE_ID_CURRENT_SITE', 1 );
+//define( 'BLOG_ID_CURRENT_SITE', 1 );
+
+
+// Single mode
 define( 'DB_NAME', 'safety-passwords' );
 define( 'DB_USER', 'root' );
 define( 'DB_PASSWORD', 'password' );
