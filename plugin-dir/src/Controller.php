@@ -22,7 +22,7 @@ class Controller {
 	 * @return mixed|string
 	 */
 	public static function login_redirect( $redirect, $requested_redirect_to, $user ) {
-		// If user didn't manage to log in.
+		// User didn't manage to log in.
 		if ( ! $user instanceof \WP_User ) {
 			if ( ! isset( $_REQUEST['log'] ) ) {
 				return $redirect;
@@ -50,8 +50,8 @@ class Controller {
 		}
 
 		// User is logged in.
-		if ( true === get_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited', true ) ) {
-			// Ok, keep calm, kindly asking user to reset their password.
+		if ( get_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited', true ) ) {
+			// Okay, keep calm, kindly asking user to reset their password.
 			$reset_key = '';
 
 			if ( true !== self::retrievePassword( $user, true, $reset_key ) ) {
@@ -61,7 +61,7 @@ class Controller {
 				);
 			}
 
-			// If the user doesn't reset the password now, he keeps possibility to log in by old password.
+			// If the user doesn't reset the password now, he is still able to log in by using the old one.
 			return network_site_url( "wp-login.php?action=rp&key=$reset_key&login=" . rawurlencode( $user->user_login ),
 				'login' );
 		}
@@ -74,9 +74,13 @@ class Controller {
 			return;
 		}
 
-		// @todo: check if the account is being created by another user.
-		// If not, skip the password reset initiation.
+		// This fires for both whether the account is being created by another user or by the user itself.
 		update_user_meta( $user_id, Settings::$optionPrefix . 'rp_pre_inited', true );
+
+		// This fires for only the self-registration, cancel the password reset initiation.
+		add_action( 'register_new_user', function ( $user_id ) {
+			delete_user_meta( $user_id, Settings::$optionPrefix . 'rp_pre_inited' );
+		}, 20, 1 );
 	}
 
 	public static function user_profile_update_errors( \WP_Error $errors, $update, $user ): \WP_Error {
