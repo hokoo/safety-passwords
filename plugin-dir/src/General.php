@@ -13,6 +13,13 @@ use WP_CLI;
 class General {
 
 	/**
+	 * Period between asking to change password and actually hard resetting it. Seconds.
+	 *
+	 * @var int
+	 */
+	private static int $preInitInterval = 48 * HOUR_IN_SECONDS;
+
+	/**
 	 * @throws Exception
 	 */
 	public function init(): void {
@@ -66,5 +73,9 @@ class General {
 		}
 
 		return $logger;
+	}
+
+	public static function getPreInitInterval(): int {
+		return self::$preInitInterval;
 	}
 }

@@ -2,9 +2,9 @@
 const WP_SITEURL = 'https://%s';
 const WP_HOME = 'https://%s';
 
-const SAFETY_PASSWORDS_FPR_AFTER_REGISTRATION = false;
+const SAFETY_PASSWORDS_RP_ON_REGISTRATION = true;
 const SAFETY_PASSWORDS_MIN_LEN = 10;
-const SAFETY_PASSWORDS_RESET_INTERVAL = 30;
+const SAFETY_PASSWORDS_RESET_INTERVAL = 90;
 
 
 // Multisite mode

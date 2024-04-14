@@ -28,13 +28,13 @@ class Settings {
 		$option_page = Container::make( OPTIONS_MODE, 'Safety Passwords' );
 		$settings    = [];
 		// Force Password Reset after registration
-		if ( ! self::isOverloaded( 'fpr_on_registration' ) ) {
-			$settings[] = Field::make( 'checkbox', self::$optionPrefix . 'fpr_on_registration', 'Change After Registration' )
+		if ( ! self::isOverloaded( 'rp_on_registration' ) ) {
+			$settings[] = Field::make( 'checkbox', self::$optionPrefix . 'rp_on_registration', 'Change After Registration' )
 			                   ->set_option_value( 'yes' )
 			                   ->set_help_text( 'Force users to change their password after registration.' );
 		} else {
-			$value      = self::getOverloaded( 'fpr_on_registration' ) ? 'Enabled' : 'Disabled';
-			$settings[] = Field::make( 'html', self::$optionPrefix . 'fpr_on_registration_disabled' )
+			$value      = self::getOverloaded( 'rp_on_registration' ) ? 'Enabled' : 'Disabled';
+			$settings[] = Field::make( 'html', self::$optionPrefix . 'rp_on_registration_disabled' )
 			                   ->set_html( "[$value] <b>Change After Registration</b> Overwritten by constant <br/>" .
 			                               "<small><i>Force users to change their password after registration</i></small>" );
 		}

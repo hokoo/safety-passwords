@@ -4,13 +4,25 @@ namespace iTRON\SafetyPasswords;
 
 class Controller {
 	public static function init(): void {
-		add_action( 'user_register', [ self::class, "set_force_password_change_flag" ], 20, 1 );
+		// @todo Handling pre_inited when user is already logged in.
+
+		add_action( 'user_register', [ self::class, "set_rp_pre_inited_on_registration" ], 20, 1 );
 		add_filter( 'login_redirect', [ self::class, 'login_redirect' ], 10, 3 );
 		add_action( 'user_profile_update_errors', [ self::class, 'user_profile_update_errors' ], 99, 3 );
 		add_action( "validate_password_reset", [ self::class, "validate_password_reset" ], 99, 2 );
 	}
 
+	/**
+	 * Fires on usual login attempting, but we don't actually know was it successful or not.
+	 * 
+	 * @param $redirect
+	 * @param $requested_redirect_to
+	 * @param $user
+	 *
+	 * @return mixed|string
+	 */
 	public static function login_redirect( $redirect, $requested_redirect_to, $user ) {
+		// If user didn't manage to log in.
 		if ( ! $user instanceof \WP_User ) {
 			if ( ! isset( $_REQUEST['log'] ) ) {
 				return $redirect;
@@ -22,8 +34,8 @@ class Controller {
 			if ( ! $user ) {
 				return $redirect;
 			}
-
-			// Check if user needs to reset password
+			
+			// Check if user's password has been forcefully reset.
 			if ( "1" === get_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited', true ) ) {
 				// User needs to reset password
 				add_filter( 'wp_login_errors', function ( $errors ) {
@@ -37,7 +49,9 @@ class Controller {
 			return $redirect;
 		}
 
-		if ( "1" === get_user_meta( $user->ID, Settings::$optionPrefix . 'fpr_registration', true ) ) {
+		// User is logged in.
+		if ( true === get_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited', true ) ) {
+			// Ok, keep calm, kindly asking user to reset their password.
 			$reset_key = '';
 
 			if ( true !== self::retrievePassword( $user, true, $reset_key ) ) {
@@ -47,8 +61,7 @@ class Controller {
 				);
 			}
 
-			delete_user_meta( $user->ID, Settings::$optionPrefix . 'fpr_registration' );
-
+			// If the user doesn't reset the password now, he keeps possibility to log in by old password.
 			return network_site_url( "wp-login.php?action=rp&key=$reset_key&login=" . rawurlencode( $user->user_login ),
 				'login' );
 		}
@@ -56,28 +69,57 @@ class Controller {
 		return $redirect;
 	}
 
-	public static function set_force_password_change_flag( $user_id ): void {
-		if ( ! Settings::getOption( 'fpr_on_registration' ) ) {
+	public static function set_rp_pre_inited_on_registration( $user_id ): void {
+		if ( ! Settings::getOption( 'rp_on_registration' ) ) {
 			return;
 		}
 
-		update_user_meta( $user_id, Settings::$optionPrefix . 'fpr_registration', 1 );
+		// @todo: check if the account is being created by another user.
+		// If not, skip the password reset initiation.
+		update_user_meta( $user_id, Settings::$optionPrefix . 'rp_pre_inited', true );
 	}
 
 	public static function user_profile_update_errors( \WP_Error $errors, $update, $user ): \WP_Error {
 		if ( ! empty( $_POST["pass1"] ) ) {
+			// This might be either password update or user creation as well.
+			// We need to check if the password is secure in both cases.
+			// But even if the password is secure, we need to force user to reset it after registration when
+			// the account is being created by another user.
 			if ( ! self::is_password_secure( $_POST["pass1"] ) ) {
 				$errors->add( 'pass', self::get_weak_password_message() );
+				return $errors;
 			}
 
-			update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
+			if ( ! $update ) {
+				// User is being created. Nothing to do anymore here.
+				return $errors;
+			}
 
-			return $errors;
+			// Password is secure, remove the flag.
+			// But we can't do it in current context, because the password is not actually updated yet
+			// and some handlers may return errors even if no errors now.
+			add_action( 'wp_update_user', function ( $user_id, $userdata ) use ( $user ) {
+				if ( $user_id !== $user->ID ) {
+					return;
+				}
+
+				update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
+				delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
+				delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited' );
+			}, 10, 2 );
 		}
 
 		return $errors;
 	}
 
+	/**
+	 * Fires exactly after password reset form submission.
+	 * 
+	 * @param $errors
+	 * @param $user
+	 *
+	 * @return mixed
+	 */
 	public static function validate_password_reset( $errors, $user = null ) {
 		if ( ! $user instanceof \WP_User ) {
 			return $errors;
@@ -90,8 +132,9 @@ class Controller {
 
 			if ( ! $errors->get_error_data( "pass" ) ) {
 				// Password is secure, remove the flag
-				delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
 				update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
+				delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
+				delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited' );
 			}
 
 			return $errors;
@@ -156,18 +199,13 @@ class Controller {
 			}
 
 			return sprintf(
-				__( "Dear %s!\r\nYou were asked to reset your password.\r\nIf you didn't managed do it till now, please, visit the following address: <%s>",
+				__( "Hi there!<br/>We noticed you haven't had a chance to reset your password yet, and that's totally okay!<br/>Please proceed to do so now by visiting the following link: <%s>",
 					'safety-passwords' ),
 				$user->user_login,
 				network_site_url( "wp-login.php?action=rp&key=$key&login=" . rawurlencode( $login ), 'login' ) . '&wp_lang=' . get_user_locale( $user_data )
 			);
 		}, 99, 4 );
 
-		$result = retrieve_password( $user->user_login );
-		if ( true === $result ) {
-			update_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited', 1 );
-		}
-
-		return $result;
+		return retrieve_password( $user->user_login );
 	}
 }
