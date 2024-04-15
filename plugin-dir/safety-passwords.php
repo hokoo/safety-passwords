@@ -22,6 +22,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 $general = new General();
 $general->init();
+add_action( 'in_plugin_update_message-' . PLUGIN_NAME, __NAMESPACE__ . '\upgradeMessage', 10, 2 );
 
 register_activation_hook(
 	PLUGIN_MAIN_FILE_PATH,
@@ -32,3 +33,12 @@ register_deactivation_hook(
 	PLUGIN_MAIN_FILE_PATH,
 	[ $general, 'processDeactivationHook' ]
 );
+
+function upgradeMessage( $data, $response ) {
+	if( isset( $data['upgrade_notice'] ) ) :
+		printf(
+			'<div class="update-message">%s</div>',
+			wpautop( $data['upgrade_notice'] )
+		);
+	endif;
+}
