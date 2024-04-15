@@ -95,14 +95,21 @@ class Controller {
 			}
 
 			if ( ! $update ) {
-				// User is being created. Nothing to do anymore here.
+				// User is being created.
+				// User's registration is handled by the callback of the 'user_register' hook firing a bit later.
+				// Nothing to do here anymore.
 				return $errors;
 			}
 
-			// Password is secure, remove the flag.
-			// But we can't do it in current context, because the password is not actually updated yet
-			// and some handlers may return errors even if no errors now.
+			// At this point, the user is being updated: either by the user itself or by another user.
+			// We believe that since the password is secure, we don't need to force the user to reset it again
+			// even when the account is being updated by another user.
+			// Password is secure at this point, remove the flag.
+			// But we can't do it in the current context, because the password is not actually updated yet,
+			// and some hook handlers may return errors a bit later even if no errors now.
+			// So, the hook 'wp_update_user' is the best place to do it.
 			add_action( 'wp_update_user', function ( $user_id, $userdata ) use ( $user ) {
+				// Reassure that the user is the same.
 				if ( $user_id !== $user->ID ) {
 					return;
 				}
@@ -186,12 +193,18 @@ class Controller {
 			return;
 		}
 
-		shell_exec( "wp safety check-users" );
+		General::getLogger()->info( 'Checking users for password reset.' );
+		self::checkUsers( $resetUsers, $preInitedUsers );
 
+		// Log the results.
+		$string = 'Users to reset: ' . count( $resetUsers ) . PHP_EOL .
+		          'Users to pre-init: ' . count( $preInitedUsers );
+		General::getLogger()->info( $string, [ 'resetUsers' => $resetUsers, 'preInitedUsers' => $preInitedUsers ] );
 	}
 
 	public static function retrievePassword( $user, $skip_email = false, &$reset_key = '' ) {
 		add_filter( 'retrieve_password_message', function ( $message, $key, $login, $user_data ) use ( $user, $skip_email, &$reset_key ) {
+			// Reassure that the user is the same.
 			if ( $login !== $user->user_login ) {
 				return $message;
 			}
@@ -211,5 +224,31 @@ class Controller {
 		}, 99, 4 );
 
 		return retrieve_password( $user->user_login );
+	}
+
+	public static function checkUsers( &$resetUsers = [], &$preInitedUsers = [] ) {
+		$users = get_users( ['fields' => 'ids'] );
+		foreach ( $users as $user_id ) {
+			$last_reset = (int) get_user_meta( $user_id, Settings::$optionPrefix . 'last_reset', true );
+			if ( ! $last_reset ) {
+				update_user_meta( $user_id, Settings::$optionPrefix . 'last_reset', time() );
+				continue;
+			}
+
+			// Password has to be reset immediately.
+			if ( ( time() - $last_reset ) > ( DAY_IN_SECONDS * Settings::getInterval() ) ) {
+				if ( true === Controller::retrievePassword( get_user_by( 'ID', $user_id ) ) ) {
+					$resetUsers[] = $user_id;
+				}
+
+				continue;
+			}
+
+			// Password resetting is coming soon.
+			if ( ( time() - $last_reset ) > ( DAY_IN_SECONDS * Settings::getInterval() - General::getPreInitInterval() ) ) {
+				update_user_meta( $user_id, Settings::$optionPrefix . 'rp_pre_inited', true );
+				$preInitedUsers[] = $user_id;
+			}
+		}
 	}
 }

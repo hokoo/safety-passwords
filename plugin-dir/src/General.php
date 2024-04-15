@@ -20,18 +20,30 @@ class General {
 	private static int $preInitInterval = 48 * HOUR_IN_SECONDS;
 
 	/**
-	 * @throws Exception
+	 * Period between hard resetting password and reminding that resetting is coming. Seconds.
+	 *
+	 * @var int|float
 	 */
+	private static int $reminderInterval = 7 * DAY_IN_SECONDS;
+
+	private static LoggerInterface $logger;
+
 	public function init(): void {
+		self::$logger = new NullLogger();
 		Settings::init();
 		Controller::init();
 
 		defined( 'WP_CLI' ) && WP_CLI && WP_CLI::add_command( 'safety', Safety::class );
 
+		add_action( Cron::EVENT_NAME, [ Controller::class, 'findExpiringPasswords' ] );
+		add_action( 'itron/safety-passwords/activate', [ self::class, 'processSecondPhaseActivation' ] );
+		add_action( 'admin_bar_menu', [ self::class, 'addAdminBarMenu' ], 60,1 );
+		add_action( 'personal_options', [ self::class, 'addUserProfileNotice' ] );
+		add_action( 'admin_head', [ self::class, 'addAdminStyles' ] );
+		add_action( Cron::EVENT_NAME, [ Controller::class, 'findExpiringPasswords' ] );
 		add_action( 'init', function () {
-			$logger = $this->getLogger();
+			self::$logger = $this->initLogger();
 		}, 5 );
-		add_action( 'itron/safety-passwords/activate', [ $this, 'processSecondPhaseActivation' ] );
 	}
 
 	public function processActivationHook(): void {
@@ -47,7 +59,7 @@ class General {
 		wp_schedule_single_event( time(), 'itron/safety-passwords/activate' );
 	}
 
-	public function processSecondPhaseActivation(): void {
+	public static function processSecondPhaseActivation(): void {
 		Cron::ensureEvent( true );
 	}
 
@@ -61,9 +73,9 @@ class General {
 		return $connectors;
 	}
 
-	private function getLogger(): LoggerInterface {
-		$logger = apply_filters( 'itron/safety-passwords/logger', new NullLogger() );
-		if ( ! is_a( $logger, LoggerInterface::class ) ) {
+	private function initLogger(): LoggerInterface {
+		$logger = apply_filters( 'itron/safety-passwords/logger', self::$logger );
+		if ( ! is_a( $logger, LoggerInterface::class ) || $logger instanceof NullLogger ) {
 			if ( class_exists( 'WP_Stream\Connector' ) ) {
 				$logger = new Stream();
 
@@ -77,5 +89,57 @@ class General {
 
 	public static function getPreInitInterval(): int {
 		return self::$preInitInterval;
+	}
+
+	public static function addAdminBarMenu( $wp_admin_bar ) {
+		if ( ! Settings::getInterval() ) {
+			return;
+		}
+
+		$user_id = get_current_user_id();
+		$last_reset = (int) get_user_meta( $user_id, Settings::$optionPrefix . 'last_reset', true );
+		if ( ! ( time() - $last_reset ) > ( DAY_IN_SECONDS * Settings::getInterval() - self::$reminderInterval ) ) {
+			return;
+		}
+
+		/* @var \WP_Admin_Bar $wp_admin_bar */
+		$wp_admin_bar->add_node( array(
+			'id'    => 'safety-passwords',
+			'title' => 'Change password in ' . floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) ) . ' days',
+			'meta'  => [
+				'class' => 'safety-passwords-reminder',
+			],
+		) );
+	}
+
+	public static function addUserProfileNotice() {
+		if ( ! Settings::getInterval() ) {
+			return;
+		}
+
+		$user_id = get_current_user_id();
+		$last_reset = (int) get_user_meta( $user_id, Settings::$optionPrefix . 'last_reset', true );
+		if ( ! ( time() - $last_reset ) > ( DAY_IN_SECONDS * Settings::getInterval() - self::$reminderInterval ) ) {
+			return;
+		}
+
+		self::echoNotice( 'Please, change your password in ' . floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) ) . ' days.', 'warning' );
+	}
+
+	public static function getLogger(): LoggerInterface {
+		return self::$logger;
+	}
+
+	public static function addAdminStyles() {
+		echo <<<STYLE
+<style>
+.safety-passwords-reminder,.safety-passwords-reminder:hover{}
+.safety-passwords-reminder .ab-item,.safety-passwords-reminder .ab-item:hover{background-color:#ff9900!important;color:#000!important;}
+</style>
+STYLE;
+	}
+
+	public static function echoNotice( string $message, string $type = 'info' ) {
+		echo '<div class="notice notice-' . $type . '"><p>' . $message . '</p></div>';
 	}
 }

@@ -2,14 +2,13 @@
 /plugin-dir/vendor/
 /wordpress/
 /wp-content/
-
 /index.php
 /wp-config.php
+
 /.env
 *.sql
 *.tgz
-
-# logs
+*.log
 /install/nginx/*
 /install/php-fpm/error.log
 

@@ -93,7 +93,7 @@ class StreamConnector extends Connector {
 	 *
 	 * @return void
 	 */
-	public function callback_ctm_stream_logger_write( $level, $message, $data, $module ) {
+	public function callback_safety_passwords_stream_logger_write( $level, $message, $data, $module ) {
 		$res = $this->log( $message, $data, 0, $module, $level );
 	}
 }

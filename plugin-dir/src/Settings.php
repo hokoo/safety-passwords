@@ -54,7 +54,7 @@ class Settings {
 
 		if ( ! self::isOverloaded( 'reset_interval' ) ) {
 			$settings[] = Field::make( 'text', self::$optionPrefix . 'reset_interval', 'Force Password Reset Interval (days)' )
-			                   ->set_attribute( 'min', 0 )
+			                   ->set_attribute( 'min', 7 )
 			                   ->set_attribute( 'max', 999 )
 			                   ->set_attribute( 'step', 1 )
 			                   ->set_attribute( 'type', 'number' )
