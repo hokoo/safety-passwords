@@ -1,7 +1,7 @@
 <?php
 /*
-Plugin Name: Enforce Strong User Passwords
-Description: Forces all users to have a strong password when they're changing it on their profile page.
+Plugin Name: Safety Passwords
+Description: Forces all users to have a strong password.
 Network: true
 Version: 1.0
 Author: iTRON

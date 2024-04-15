@@ -1,6 +1,6 @@
 === Safety Passwords ===
 Contributors: hokku
-Tags: user passwords,secure passwords,enforce secure passwords,force secure passwords,secure password,secure password generator,secure password strength,secure password strength meter,secure password validation,secure passwords for wordpress,secure passwords plugin,secure passwords wordpress,secure wordpress passwords,secure wp passwords,security,security passwords,security plugin,security wordpress,wordpress password,wordpress password generator,wordpress password security,wordpress password strength,wordpress password strength meter,wordpress password validation,wordpress passwords,wordpress secure password,wordpress secure passwords,wordpress security,wordpress security plugin,wordpress wp password,wp password,wp password generator,wp password security,wp password strength,wp password strength meter,wp password validation,wp passwords,wp secure password,wp secure passwords,wp security,wp security plugin
+Tags: user passwords,secure passwords,enforce secure passwords,force secure passwords,secure password validation
 Donate link: https://www.paypal.me/igortron
 Requires at least: 5.0
 Tested up to: 6.5

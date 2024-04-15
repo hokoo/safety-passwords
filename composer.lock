@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c475ac8c7100e25cc0159383aa1b74f0",
+    "content-hash": "3ac8dab40d2f39e05febcbef69ad4b14",
     "packages": [
         {
             "name": "composer/ca-bundle",
@@ -4960,6 +4960,24 @@
                 "source": "https://github.com/wp-cli/wp-config-transformer/tree/v1.3.5"
             },
             "time": "2023-11-10T14:28:03+00:00"
+        },
+        {
+            "name": "wpackagist-plugin/plugin-check",
+            "version": "1.0.1",
+            "source": {
+                "type": "svn",
+                "url": "https://plugins.svn.wordpress.org/plugin-check/",
+                "reference": "tags/1.0.1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://downloads.wordpress.org/plugin/plugin-check.1.0.1.zip"
+            },
+            "require": {
+                "composer/installers": "^1.0 || ^2.0"
+            },
+            "type": "wordpress-plugin",
+            "homepage": "https://wordpress.org/plugins/plugin-check/"
         },
         {
             "name": "wpackagist-plugin/stream",

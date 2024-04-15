@@ -41,6 +41,7 @@ class General {
 		add_action( 'personal_options', [ self::class, 'addUserProfileNotice' ] );
 		add_action( 'admin_head', [ self::class, 'addAdminStyles' ] );
 		add_action( Cron::EVENT_NAME, [ Controller::class, 'findExpiringPasswords' ] );
+		add_action( 'plugins_loaded', [ self::class, 'loadTranslations' ] );
 		add_action( 'init', function () {
 			self::$logger = $this->initLogger();
 		}, 5 );
@@ -105,7 +106,10 @@ class General {
 		/* @var \WP_Admin_Bar $wp_admin_bar */
 		$wp_admin_bar->add_node( array(
 			'id'    => 'safety-passwords',
-			'title' => 'Change password in ' . floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) ) . ' days',
+			'title' => sprintf(
+				__( 'Change password in %s days', 'safety-passwords' ),
+				floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) )
+			),
 			'meta'  => [
 				'class' => 'safety-passwords-reminder',
 			],
@@ -123,7 +127,11 @@ class General {
 			return;
 		}
 
-		self::echoNotice( 'Please, change your password in ' . floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) ) . ' days.', 'warning' );
+		self::echoNotice(
+			sprintf(
+				__( 'Please, change your password in %s days.', 'safety-passwords' ),
+				floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) )
+			) );
 	}
 
 	public static function getLogger(): LoggerInterface {
@@ -140,6 +148,10 @@ STYLE;
 	}
 
 	public static function echoNotice( string $message, string $type = 'info' ) {
-		echo '<div class="notice notice-' . $type . '"><p>' . $message . '</p></div>';
+		echo '<div class="notice notice-' . esc_attr( $type ). '"><p>' . wp_kses( $message, wp_kses_allowed_html() ) . '</p></div>';
+	}
+
+	public static function loadTranslations(): void {
+		load_plugin_textdomain( 'safety-passwords', false, dirname( PLUGIN_DIR ) . '/languages' );
 	}
 }

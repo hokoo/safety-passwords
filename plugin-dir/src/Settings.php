@@ -29,18 +29,17 @@ class Settings {
 		$settings    = [];
 		// Force Password Reset after registration
 		if ( ! self::isOverloaded( 'rp_on_registration' ) ) {
-			$settings[] = Field::make( 'checkbox', self::$optionPrefix . 'rp_on_registration', 'Change After Registration' )
+			$settings[] = Field::make( 'checkbox', self::$optionPrefix . 'rp_on_registration', __( 'Change After Registration', 'safety-passwords' ) )
 			                   ->set_option_value( 'yes' )
-			                   ->set_help_text( 'Force users to change their password after registration.' );
+			                   ->set_help_text( __('Force users to change their password after registration.', 'safety-passwords') );
 		} else {
-			$value      = self::getOverloaded( 'rp_on_registration' ) ? 'Enabled' : 'Disabled';
+			$value      = self::getOverloaded( 'rp_on_registration' ) ? __('Enabled', 'safety-passwords' ) : __( 'Disabled', 'safety-passwords' );
 			$settings[] = Field::make( 'html', self::$optionPrefix . 'rp_on_registration_disabled' )
-			                   ->set_html( "[$value] <b>Change After Registration</b> Overwritten by constant <br/>" .
-			                               "<small><i>Force users to change their password after registration</i></small>" );
+			                   ->set_html( "[$value]". __( "<b>Change After Registration</b> Overwritten by constant<br/><small><i>Force users to change their password after registration</i></small>", 'safety-passwords' ) );
 		}
 
 		if ( ! self::isOverloaded( 'min_len' ) ) {
-			$settings[] = Field::make( 'text', self::$optionPrefix . 'min_len', 'Password\'s minimum length' )
+			$settings[] = Field::make( 'text', self::$optionPrefix . 'min_len', __("Password's minimum length", 'safety-passwords') )
 			                   ->set_attribute( 'min', 8 )
 			                   ->set_attribute( 'max', 24 )
 			                   ->set_attribute( 'step', 1 )
@@ -49,21 +48,21 @@ class Settings {
 		} else {
 			$value      = self::getOverloaded( 'min_len' ) ;
 			$settings[] = Field::make( 'html', self::$optionPrefix . 'min_len_disabled' )
-			                   ->set_html( "[$value] <b>Password's minimum length</b> Overwritten by constant <br/>" );
+			                   ->set_html( "[$value]" . __( "<b>Password's minimum length</b> Overwritten by constant<br/>", 'safety-passwords' ) );
 		}
 
 		if ( ! self::isOverloaded( 'reset_interval' ) ) {
-			$settings[] = Field::make( 'text', self::$optionPrefix . 'reset_interval', 'Force Password Reset Interval (days)' )
+			$settings[] = Field::make( 'text', self::$optionPrefix . 'reset_interval', __( 'Force Password Reset Interval (days)', 'safety-passwords' ) )
 			                   ->set_attribute( 'min', 7 )
 			                   ->set_attribute( 'max', 999 )
 			                   ->set_attribute( 'step', 1 )
 			                   ->set_attribute( 'type', 'number' )
 			                   ->set_default_value( 30 )
-			                   ->set_help_text( 'Set 0 to disable forced periodical password reset' );
+			                   ->set_help_text( __('Set 0 to disable forced periodical password reset', 'safety-passwords' ) );
 		} else {
 			$value      = self::getOverloaded( 'reset_interval' ) ;
 			$settings[] = Field::make( 'html', self::$optionPrefix . 'reset_interval_disabled' )
-			                   ->set_html( "[$value] <b>Force Password Reset Interval (days)</b> Overwritten by constant <br/>" );
+			                   ->set_html( "[$value]" . __( "<b>Force Password Reset Interval (days)</b> Overwritten by constant<br/>", 'safety-passwords' ) );
 		}
 
 

@@ -11,7 +11,7 @@ class Stream extends AbstractLogger {
 			$meta = [];
 			if ( ! empty( $context ) ) {
 				$meta = array_map( function ( $value ) {
-					return is_scalar( $value ) ? $value : json_encode( $value, JSON_UNESCAPED_UNICODE );
+					return is_scalar( $value ) ? $value : wp_json_encode( $value, JSON_UNESCAPED_UNICODE );
 				}, $context );
 			}
 			do_action( 'safety_passwords_stream_logger_write', $level, $message, $meta, $module );

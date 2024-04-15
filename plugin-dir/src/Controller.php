@@ -14,7 +14,7 @@ class Controller {
 
 	/**
 	 * Fires on usual login attempting, but we don't actually know was it successful or not.
-	 * 
+	 *
 	 * @param $redirect
 	 * @param $requested_redirect_to
 	 * @param $user
@@ -34,7 +34,7 @@ class Controller {
 			if ( ! $user ) {
 				return $redirect;
 			}
-			
+
 			// Check if user's password has been forcefully reset.
 			if ( "1" === get_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited', true ) ) {
 				// User needs to reset password
@@ -56,7 +56,7 @@ class Controller {
 
 			if ( true !== self::retrievePassword( $user, true, $reset_key ) ) {
 				wp_die(
-					__( 'Something went wrong when trying to reset your password. Please, try again later.',
+					esc_html__( 'Something went wrong when trying to reset your password. Please, try again later.',
 						'safety-passwords' )
 				);
 			}
@@ -125,7 +125,7 @@ class Controller {
 
 	/**
 	 * Fires exactly after password reset form submission.
-	 * 
+	 *
 	 * @param $errors
 	 * @param $user
 	 *
@@ -165,27 +165,12 @@ class Controller {
 		return $length && $has_lower && $has_upper && $has_number && $has_special;
 	}
 
-	public static function display_notice( $msg ) {
-		add_action( 'admin_notices', function () use ( $msg ) {
-			echo "<div class='notice notice-success is-dismissible'><p>$msg</p></div>";
-		} );
-	}
-
 	public static function get_weak_password_message(): string {
-		return sprintf(
-			__( 'Please enter a %sstrong%s password to comply this site\'s security measures.', 'safety-passwords' ),
-			"<strong>",
-			"</strong>"
-		);
+		return __( "Please use a <strong>strong</strong> password to comply this site's security measures.", 'safety-passwords' );
 	}
 
 	public static function get_password_reset_message(): string {
-		return sprintf(
-			__( 'Please %sreset your password%s to continue. Follow the instructions in the email that was sent to you.',
-				'safety-passwords' ),
-			"<strong>",
-			"</strong>"
-		);
+		return __( "Please <strong>reset your password</strong> to continue. Follow the instructions in the email that was sent to you.", 'safety-passwords' );
 	}
 
 	public static function findExpiringPasswords(): void {
@@ -193,12 +178,15 @@ class Controller {
 			return;
 		}
 
-		General::getLogger()->info( 'Checking users for password reset.' );
+		General::getLogger()->info( __( 'Checking users for password reset.', 'safety-passwords' ) );
 		self::checkUsers( $resetUsers, $preInitedUsers );
 
 		// Log the results.
-		$string = 'Users to reset: ' . count( $resetUsers ) . PHP_EOL .
-		          'Users to pre-init: ' . count( $preInitedUsers );
+		$string = sprintf(
+			__('Number of users to reset password: %1$sNumber of users to remind to reset password: %2$s', 'safety-passwords' ),
+			count( $resetUsers ),
+			count( $preInitedUsers ),
+		);
 		General::getLogger()->info( $string, [ 'resetUsers' => $resetUsers, 'preInitedUsers' => $preInitedUsers ] );
 	}
 
@@ -216,8 +204,7 @@ class Controller {
 			}
 
 			return sprintf(
-				__( "Hi there!<br/>We noticed you haven't had a chance to reset your password yet, and that's totally okay!<br/>Please proceed to do so now by visiting the following link: <%s>",
-					'safety-passwords' ),
+				__( 'Hi there, %1$s!<br/>We noticed you have not had a chance to reset your password yet, and that is totally okay!<br/>Please proceed to do so now by visiting the following link: <%2$s>','safety-passwords' ),
 				$user->user_login,
 				network_site_url( "wp-login.php?action=rp&key=$key&login=" . rawurlencode( $login ), 'login' ) . '&wp_lang=' . get_user_locale( $user_data )
 			);
