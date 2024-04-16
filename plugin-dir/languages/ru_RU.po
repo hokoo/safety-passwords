@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Safety Passwords\n"
-"POT-Creation-Date: 2024-04-15 18:31+0400\n"
-"PO-Revision-Date: 2024-04-15 18:32+0400\n"
+"POT-Creation-Date: 2024-04-16 14:48+0400\n"
+"PO-Revision-Date: 2024-04-16 14:52+0400\n"
 "Last-Translator: Igor Tron <root@itron.pro>\n"
 "Language-Team: \n"
 "Language: ru_RU\n"
@@ -23,39 +23,17 @@ msgstr ""
 "X-Poedit-SearchPathExcluded-0: *.min.js\n"
 "X-Poedit-SearchPathExcluded-1: vendor\n"
 
-#: src/Controller.php:59
-#, fuzzy
-msgid ""
-"Something went wrong when trying to reset your password. Please, try again "
-"later."
-msgstr ""
-"Что-то пошло не так при попытке сбросить пароль. Пожалуйста, повторите "
-"попытку позже."
+#: src/Controller.php:65
+#, php-format
+msgid "Failed to retrieve password for user %s"
+msgstr "Не удалось восстановить пароль для пользователя %s"
 
-#: src/Controller.php:169
-#, fuzzy
-msgid ""
-"Please use a <strong>strong</strong> password to comply this site's security "
-"measures."
-msgstr ""
-"Пожалуйста, используйте <strong>надежный</strong> пароль для соблюдения мер "
-"безопасности этого сайта."
-
-#: src/Controller.php:173
-#, fuzzy
-msgid ""
-"Please <strong>reset your password</strong> to continue. Follow the "
-"instructions in the email that was sent to you."
-msgstr ""
-"Пожалуйста, <strong>сбросьте пароль</strong> , чтобы продолжить. Следуйте "
-"инструкциям в отправленном вам электронном письме."
-
-#: src/Controller.php:181
+#: src/Controller.php:188
 #, fuzzy
 msgid "Checking users for password reset."
 msgstr "Проверка пользователей на сброс пароля."
 
-#: src/Controller.php:186
+#: src/Controller.php:193
 #, fuzzy, php-format
 msgid ""
 "Number of users to reset password: %1$sNumber of users to remind to reset "
@@ -64,30 +42,53 @@ msgstr ""
 "Количество пользователей для сброса пароля: %1$sКоличество пользователей, "
 "которым нужно напомнить о сбросе пароля: %2$s"
 
-#: src/Controller.php:207
+#: src/Controller.php:215
 #, fuzzy, php-format
 msgid ""
-"Hi there, %1$s!<br/>We noticed you have not had a chance to reset your "
-"password yet, and that is totally okay!<br/>Please proceed to do so now by "
+"Hi there, %1$s!%3$sWe noticed you have not had a chance to reset your "
+"password yet, and that is totally okay!%3$sPlease proceed to do so now by "
 "visiting the following link: <%2$s>"
 msgstr ""
 "Всем привет! %1$s<br/>Мы заметили, что у вас еще не было возможности "
 "сбросить пароль, и это совершенно нормально!<br/>Пожалуйста, сделайте это "
 "сейчас, перейдя по следующей ссылке: %2$s>"
 
-#: src/General.php:110
-#, fuzzy, php-format
-msgid "Change password in %s days"
-msgstr "Смена пароля за %s дней"
+#: src/Controller.php:257
+#, php-format
+msgid "Failed to reset password for user %s"
+msgstr "Не удалось сбросить пароль для пользователя %s"
 
-#: src/General.php:132
+#: src/Controller.php:282
+#, fuzzy
+msgid ""
+"Please use a <strong>strong</strong> password to comply this site's security "
+"measures."
+msgstr ""
+"Пожалуйста, используйте <strong>надежный</strong> пароль для соблюдения мер "
+"безопасности этого сайта."
+
+#: src/Controller.php:286
+#, fuzzy
+msgid ""
+"Please <strong>reset your password</strong> to continue. Follow the "
+"instructions in the email that was sent to you."
+msgstr ""
+"Пожалуйста, <strong>сбросьте пароль</strong> , чтобы продолжить. Следуйте "
+"инструкциям в отправленном вам электронном письме."
+
+#: src/General.php:109
+#, php-format
+msgid "Change password in %s days"
+msgstr "Смените пароль не позднее %s д."
+
+#: src/General.php:135
 #, php-format
 msgid "Please, change your password in %s days."
 msgstr "Пожалуйста, смените пароль в течение %s дн."
 
 #: src/Settings.php:32
 msgid "Change After Registration"
-msgstr "Измененить после регистрации"
+msgstr "Изменить после регистрации"
 
 #: src/Settings.php:34
 msgid "Force users to change their password after registration."
@@ -149,3 +150,11 @@ msgstr "Обеспечивает использование пользовате
 #, fuzzy
 msgid "iTRON"
 msgstr "iTRON"
+
+#, fuzzy
+#~ msgid ""
+#~ "Something went wrong when trying to reset your password. Please, try "
+#~ "again later."
+#~ msgstr ""
+#~ "Что-то пошло не так при попытке сбросить пароль. Пожалуйста, повторите "
+#~ "попытку позже."
