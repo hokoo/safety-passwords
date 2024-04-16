@@ -79,6 +79,13 @@ class Settings {
 		return constant( 'SAFETY_PASSWORDS_' . strtoupper( $optionSlug ) );
 	}
 
+	/**
+	 * @todo Cache invalidation.
+	 *
+	 * @param string $optionSlug
+	 *
+	 * @return mixed|null
+	 */
 	public static function getOption( string $optionSlug ) {
 		if ( self::isOverloaded( $optionSlug ) ) {
 			return self::getOverloaded( $optionSlug );
