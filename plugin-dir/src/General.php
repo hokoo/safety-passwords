@@ -100,7 +100,7 @@ class General {
 
 		$user_id = get_current_user_id();
 		$last_reset = (int) get_user_meta( $user_id, Settings::$optionPrefix . 'last_reset', true );
-		if ( ! ( time() - $last_reset ) > ( DAY_IN_SECONDS * Settings::getInterval() - self::$reminderInterval ) ) {
+		if ( ( time() - $last_reset ) < ( DAY_IN_SECONDS * Settings::getInterval() - self::$reminderInterval ) ) {
 			return;
 		}
 
@@ -129,16 +129,23 @@ class General {
 		}
 
 		$last_reset = (int) get_user_meta( $user_id, Settings::$optionPrefix . 'last_reset', true );
-		if ( ! ( time() - $last_reset ) > ( DAY_IN_SECONDS * Settings::getInterval() - self::$reminderInterval ) ) {
-			return;
-		}
-
-		self::echoNotice(
-			sprintf(
+		if ( ( time() - $last_reset ) < ( DAY_IN_SECONDS * Settings::getInterval() - self::$reminderInterval ) ) {
+			$notice = sprintf(
+				/* translators: %s: days */
+				__( 'Next password change in %s days.', 'safety-passwords' ),
+				floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) )
+			);
+			$type = 'info';
+		} else {
+			$notice = sprintf(
 				/* translators: %s: days */
 				__( 'Please, change your password in %s days.', 'safety-passwords' ),
 				floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) )
-			) );
+			);
+			$type = 'warning';
+		}
+
+		self::echoNotice( $notice, $type );
 	}
 
 	public static function getLogger(): LoggerInterface {
