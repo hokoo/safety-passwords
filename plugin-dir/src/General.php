@@ -40,7 +40,6 @@ class General {
 		add_action( 'admin_bar_menu', [ self::class, 'addAdminBarMenu' ], 60,1 );
 		add_action( 'personal_options', [ self::class, 'addUserProfileNotice' ], 20, 1 );
 		add_action( 'admin_head', [ self::class, 'addAdminStyles' ] );
-		add_action( Cron::EVENT_NAME, [ Controller::class, 'findExpiringPasswords' ] );
 		add_action( 'plugins_loaded', [ self::class, 'loadTranslations' ] );
 		add_action( 'init', function () {
 			self::$logger = $this->initLogger();
