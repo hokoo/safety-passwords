@@ -53,17 +53,30 @@ class Controller {
 
 		// User is logged in.
 		if ( get_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited', true ) ) {
-			// Okay, keep calm, kindly asking user to reset their password.
+			// Okay, keep calm, kindly asking the user to change their password.
+			// "Soft" password reset initiation. It's really seamless, without any reset link sendings.
 			$reset_key = '';
 
-			if ( true !== self::retrievePassword( $user, true, $reset_key ) ) {
-				wp_die(
-					esc_html__( 'Something went wrong when trying to reset your password. Please, try again later.',
-						'safety-passwords' )
+			$reset = self::retrievePassword( $user, true, $reset_key );
+			if ( true !== $reset ) {
+				// Something went wrong when trying to init the password changing.
+				// We really don't know what it was. But it seems it's better to allow the user to log in.
+
+				$msg = __( 'Failed to retrieve password for user %s', 'safety-passwords' );
+				if ( $reset instanceof WP_Error ) {
+					$msg .= ': ' . implode( '; ', $reset->get_error_messages() );
+				}
+
+				General::getLogger()->error(
+					sprintf( $msg, "{$user->user_login} [{$user->user_email}]" ),
+					[ 'user' => $user, 'error' => $reset ]
 				);
+
+				return $redirect;
 			}
 
-			// If the user doesn't reset the password now, he is still able to log in by using the old one.
+			// The user just is being redirected to the password change form.
+			// If the user doesn't change it now, he is still able to log in by using the old one until its expiration.
 			return network_site_url( "wp-login.php?action=rp&key=$reset_key&login=" . rawurlencode( $user->user_login ),
 				'login' );
 		}
