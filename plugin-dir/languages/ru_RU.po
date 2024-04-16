@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Safety Passwords\n"
 "POT-Creation-Date: 2024-04-16 14:48+0400\n"
-"PO-Revision-Date: 2024-04-16 14:52+0400\n"
+"PO-Revision-Date: 2024-04-16 15:19+0400\n"
 "Last-Translator: Igor Tron <root@itron.pro>\n"
 "Language-Team: \n"
 "Language: ru_RU\n"
@@ -34,7 +34,7 @@ msgid "Checking users for password reset."
 msgstr "Проверка пользователей на сброс пароля."
 
 #: src/Controller.php:193
-#, fuzzy, php-format
+#, php-format
 msgid ""
 "Number of users to reset password: %1$sNumber of users to remind to reset "
 "password: %2$s"
@@ -43,15 +43,15 @@ msgstr ""
 "которым нужно напомнить о сбросе пароля: %2$s"
 
 #: src/Controller.php:215
-#, fuzzy, php-format
+#, php-format
 msgid ""
 "Hi there, %1$s!%3$sWe noticed you have not had a chance to reset your "
 "password yet, and that is totally okay!%3$sPlease proceed to do so now by "
 "visiting the following link: <%2$s>"
 msgstr ""
-"Всем привет! %1$s<br/>Мы заметили, что у вас еще не было возможности "
-"сбросить пароль, и это совершенно нормально!<br/>Пожалуйста, сделайте это "
-"сейчас, перейдя по следующей ссылке: %2$s>"
+"Привет, %1$s!%3$sМы заметили, вы пока еще не сменили свой пароль, но это "
+"ничего страшного.%3$sПожалуйста, сделайте это сейчас, перейдя по следующей "
+"ссылке: <%2$s>"
 
 #: src/Controller.php:257
 #, php-format
@@ -59,7 +59,6 @@ msgid "Failed to reset password for user %s"
 msgstr "Не удалось сбросить пароль для пользователя %s"
 
 #: src/Controller.php:282
-#, fuzzy
 msgid ""
 "Please use a <strong>strong</strong> password to comply this site's security "
 "measures."
@@ -68,12 +67,11 @@ msgstr ""
 "безопасности этого сайта."
 
 #: src/Controller.php:286
-#, fuzzy
 msgid ""
 "Please <strong>reset your password</strong> to continue. Follow the "
 "instructions in the email that was sent to you."
 msgstr ""
-"Пожалуйста, <strong>сбросьте пароль</strong> , чтобы продолжить. Следуйте "
+"Пожалуйста, <strong>сбросьте пароль</strong> чтобы продолжить. Следуйте "
 "инструкциям в отправленном вам электронном письме."
 
 #: src/General.php:109
@@ -88,7 +86,7 @@ msgstr "Пожалуйста, смените пароль в течение %s �
 
 #: src/Settings.php:32
 msgid "Change After Registration"
-msgstr "Изменить после регистрации"
+msgstr "Изменять после регистрации"
 
 #: src/Settings.php:34
 msgid "Force users to change their password after registration."
@@ -96,11 +94,11 @@ msgstr "Принудительно менять пароль после реги
 
 #: src/Settings.php:36
 msgid "Enabled"
-msgstr "Включено"
+msgstr "Вкл"
 
 #: src/Settings.php:36
 msgid "Disabled"
-msgstr "Отключено"
+msgstr "Выкл"
 
 #: src/Settings.php:38
 msgid ""
@@ -112,7 +110,6 @@ msgstr ""
 "small>"
 
 #: src/Settings.php:42
-#, fuzzy
 msgid "Password's minimum length"
 msgstr "Минимальная длина пароля"
 
@@ -121,12 +118,10 @@ msgid "<b>Password's minimum length</b> Overwritten by constant<br/>"
 msgstr "<b>Минимальная длина пароля</b> Перезаписано константой<br/>"
 
 #: src/Settings.php:55
-#, fuzzy
 msgid "Force Password Reset Interval (days)"
 msgstr "Интервал принудительного сброса пароля (дней)"
 
 #: src/Settings.php:61
-#, fuzzy
 msgid "Set 0 to disable forced periodical password reset"
 msgstr ""
 "Установите 0, чтобы отключить принудительный периодический сброс пароля"
@@ -147,7 +142,6 @@ msgid "Forces all users to have a strong password."
 msgstr "Обеспечивает использование пользователями надежных паролей."
 
 #. Author of the plugin/theme
-#, fuzzy
 msgid "iTRON"
 msgstr "iTRON"
 
