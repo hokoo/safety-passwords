@@ -2,6 +2,9 @@
 
 namespace iTRON\SafetyPasswords;
 
+use WP_Error;
+use WP_User;
+
 class Controller {
 	public static function init(): void {
 		// @todo Handling pre_inited when user is already logged in.
@@ -35,9 +38,8 @@ class Controller {
 				return $redirect;
 			}
 
-			// Check if user's password has been forcefully reset.
 			if ( "1" === get_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited', true ) ) {
-				// User needs to reset password
+				// Oh, it seems we do know why the user has failed to log in.
 				add_filter( 'wp_login_errors', function ( $errors ) {
 					$errors->errors = [];
 					$errors->add( 'pass', self::get_password_reset_message() );
@@ -165,14 +167,6 @@ class Controller {
 		return $length && $has_lower && $has_upper && $has_number && $has_special;
 	}
 
-	public static function get_weak_password_message(): string {
-		return __( "Please use a <strong>strong</strong> password to comply this site's security measures.", 'safety-passwords' );
-	}
-
-	public static function get_password_reset_message(): string {
-		return __( "Please <strong>reset your password</strong> to continue. Follow the instructions in the email that was sent to you.", 'safety-passwords' );
-	}
-
 	public static function findExpiringPasswords(): void {
 		if ( ! Settings::getInterval() ) {
 			return;
@@ -190,7 +184,7 @@ class Controller {
 		General::getLogger()->info( $string, [ 'resetUsers' => $resetUsers, 'preInitedUsers' => $preInitedUsers ] );
 	}
 
-	public static function retrievePassword( $user, $skip_email = false, &$reset_key = '' ) {
+	public static function retrievePassword( WP_User $user, $skip_email = false, &$reset_key = '' ) {
 		add_filter( 'retrieve_password_message', function ( $message, $key, $login, $user_data ) use ( $user, $skip_email, &$reset_key ) {
 			// Reassure that the user is the same.
 			if ( $login !== $user->user_login ) {
@@ -204,9 +198,11 @@ class Controller {
 			}
 
 			return sprintf(
-				__( 'Hi there, %1$s!<br/>We noticed you have not had a chance to reset your password yet, and that is totally okay!<br/>Please proceed to do so now by visiting the following link: <%2$s>','safety-passwords' ),
+				/* Translators: %1$s - user login, %2$s - password reset link, %3$s - new line */
+				__( 'Hi there, %1$s!%3$sWe noticed you have not had a chance to reset your password yet, and that is totally okay!%3$sPlease proceed to do so now by visiting the following link: <%2$s>','safety-passwords' ),
 				$user->user_login,
-				network_site_url( "wp-login.php?action=rp&key=$key&login=" . rawurlencode( $login ), 'login' ) . '&wp_lang=' . get_user_locale( $user_data )
+				network_site_url( "wp-login.php?action=rp&key=$key&login=" . rawurlencode( $login ), 'login' ) . '&wp_lang=' . get_user_locale( $user_data ),
+				PHP_EOL . PHP_EOL
 			);
 		}, 99, 4 );
 
@@ -216,6 +212,11 @@ class Controller {
 	public static function checkUsers( &$resetUsers = [], &$preInitedUsers = [] ) {
 		$users = get_users( ['fields' => 'ids'] );
 		foreach ( $users as $user_id ) {
+			if ( true === get_user_meta( $user_id, Settings::$optionPrefix . 'rp_inited', true ) ) {
+				// The user has already reset the password, skip.
+				continue;
+			}
+
 			$last_reset = (int) get_user_meta( $user_id, Settings::$optionPrefix . 'last_reset', true );
 			if ( ! $last_reset ) {
 				update_user_meta( $user_id, Settings::$optionPrefix . 'last_reset', time() );
@@ -224,9 +225,34 @@ class Controller {
 
 			// Password has to be reset immediately.
 			if ( ( time() - $last_reset ) > ( DAY_IN_SECONDS * Settings::getInterval() ) ) {
-				if ( true === Controller::retrievePassword( get_user_by( 'ID', $user_id ) ) ) {
-					$resetUsers[] = $user_id;
+				$wp_user = get_user_by( 'ID', $user_id );
+				if ( ! $wp_user instanceof WP_User ) {
+					continue;
 				}
+
+				// Reset the password. Since this moment the user can not log in with the old password.
+				update_user_meta( $user_id, Settings::$optionPrefix . 'rp_inited', true );
+				wp_set_password( wp_generate_password( 24 ), $user_id );
+
+				// We do not handle observing expiration of the password reset link.
+				// When user uses expired link, WordPress itself handles it.
+				$reset = Controller::retrievePassword( $wp_user );
+
+				if ( true !== $reset ) {
+					// Something went wrong when trying to reset the password.
+					$msg = sprintf(
+						__( "Failed to reset password for user %s", 'safety-passwords' ),
+						"{$wp_user->user_login} [{$wp_user->user_email}]"
+					);
+
+					if ( $reset instanceof WP_Error ) {
+						$msg .= ': ' . implode(  '; ', $reset->get_error_messages() );
+					}
+
+					General::getLogger()->error( $msg, [ 'user_id' => $user_id, 'error' => $reset ] );
+				}
+
+				$resetUsers[] = $user_id;
 
 				continue;
 			}
@@ -237,5 +263,13 @@ class Controller {
 				$preInitedUsers[] = $user_id;
 			}
 		}
+	}
+
+	public static function get_weak_password_message(): string {
+		return __( "Please use a <strong>strong</strong> password to comply this site's security measures.", 'safety-passwords' );
+	}
+
+	public static function get_password_reset_message(): string {
+		return __( "Please <strong>reset your password</strong> to continue. Follow the instructions in the email that was sent to you.", 'safety-passwords' );
 	}
 }
