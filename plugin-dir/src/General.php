@@ -38,7 +38,7 @@ class General {
 		add_action( Cron::EVENT_NAME, [ Controller::class, 'findExpiringPasswords' ] );
 		add_action( 'itron/safety-passwords/activate', [ self::class, 'processSecondPhaseActivation' ] );
 		add_action( 'admin_bar_menu', [ self::class, 'addAdminBarMenu' ], 60,1 );
-		add_action( 'personal_options', [ self::class, 'addUserProfileNotice' ] );
+		add_action( 'personal_options', [ self::class, 'addUserProfileNotice' ], 20, 1 );
 		add_action( 'admin_head', [ self::class, 'addAdminStyles' ] );
 		add_action( Cron::EVENT_NAME, [ Controller::class, 'findExpiringPasswords' ] );
 		add_action( 'plugins_loaded', [ self::class, 'loadTranslations' ] );
@@ -116,12 +116,16 @@ class General {
 		) );
 	}
 
-	public static function addUserProfileNotice() {
+	public static function addUserProfileNotice( \WP_User $user ) {
 		if ( ! Settings::getInterval() ) {
 			return;
 		}
 
 		$user_id = get_current_user_id();
+		if ( $user_id != $user->ID ) {
+			return;
+		}
+
 		$last_reset = (int) get_user_meta( $user_id, Settings::$optionPrefix . 'last_reset', true );
 		if ( ! ( time() - $last_reset ) > ( DAY_IN_SECONDS * Settings::getInterval() - self::$reminderInterval ) ) {
 			return;
