@@ -38,7 +38,7 @@ function upgradeMessage( $data, $response ) {
 	if( isset( $data['upgrade_notice'] ) ) :
 		printf(
 			'<div class="update-message">%s</div>',
-			wpautop( $data['upgrade_notice'] )
+			wp_kses( wpautop( $data['upgrade_notice'] ), 'post' )
 		);
 	endif;
 }
