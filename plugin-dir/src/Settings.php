@@ -90,7 +90,7 @@ class Settings {
 			return $cache;
 		}
 
-		$value = carbon_get_theme_option( $optionSlug );
+		$value = carbon_get_theme_option( self::$optionPrefix . $optionSlug );
 		wp_cache_set( $optionSlug, $value, PLUGIN_SLUG );
 
 		return $value;
