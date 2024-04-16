@@ -8,7 +8,9 @@ use iTRON\SafetyPasswords\Integrations\StreamConnector;
 use iTRON\SafetyPasswords\Loggers\Stream;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use WP_Admin_Bar;
 use WP_CLI;
+use WP_User;
 
 class General {
 
@@ -102,7 +104,7 @@ class General {
 			return;
 		}
 
-		/* @var \WP_Admin_Bar $wp_admin_bar */
+		/* @var WP_Admin_Bar $wp_admin_bar */
 		$wp_admin_bar->add_node( array(
 			'id'    => 'safety-passwords',
 			'title' => sprintf(
@@ -115,7 +117,7 @@ class General {
 		) );
 	}
 
-	public static function addUserProfileNotice( \WP_User $user ) {
+	public static function addUserProfileNotice( WP_User $user ) {
 		if ( ! Settings::getInterval() ) {
 			return;
 		}

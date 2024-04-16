@@ -26,7 +26,7 @@ class Controller {
 	 */
 	public static function login_redirect( $redirect, $requested_redirect_to, $user ) {
 		// User didn't manage to log in.
-		if ( ! $user instanceof \WP_User ) {
+		if ( ! $user instanceof WP_User ) {
 			if ( ! isset( $_REQUEST['log'] ) ) {
 				return $redirect;
 			}
@@ -98,7 +98,7 @@ class Controller {
 		}, 20, 1 );
 	}
 
-	public static function user_profile_update_errors( \WP_Error $errors, $update, $user ): \WP_Error {
+	public static function user_profile_update_errors( WP_Error $errors, $update, $user ): WP_Error {
 		if ( ! empty( $_POST["pass1"] ) ) {
 			// This might be either password update or user creation as well.
 			// We need to check if the password is secure in both cases.
@@ -147,7 +147,7 @@ class Controller {
 	 * @return mixed
 	 */
 	public static function validate_password_reset( $errors, $user = null ) {
-		if ( ! $user instanceof \WP_User ) {
+		if ( ! $user instanceof WP_User ) {
 			return $errors;
 		}
 
