@@ -108,6 +108,7 @@ class General {
 		$wp_admin_bar->add_node( array(
 			'id'    => 'safety-passwords',
 			'title' => sprintf(
+				/* translators: %s: days */
 				__( 'Change password in %s days', 'safety-passwords' ),
 				floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) )
 			),
@@ -134,6 +135,7 @@ class General {
 
 		self::echoNotice(
 			sprintf(
+				/* translators: %s: days */
 				__( 'Please, change your password in %s days.', 'safety-passwords' ),
 				floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) )
 			) );

@@ -27,11 +27,13 @@ class Controller {
 	public static function login_redirect( $redirect, $requested_redirect_to, $user ) {
 		// User didn't manage to log in.
 		if ( ! $user instanceof WP_User ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			if ( ! isset( $_REQUEST['log'] ) ) {
 				return $redirect;
 			}
 
 			// Retrieve user object from user log
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$user = get_user_by( 'login', $_REQUEST['log'] ) ?: get_user_by( 'email', $_REQUEST['log'] );
 
 			if ( ! $user ) {
@@ -62,6 +64,7 @@ class Controller {
 				// Something went wrong when trying to init the password changing.
 				// We really don't know what it was. But it seems it's better to allow the user to log in.
 
+				/* Translators: %s - user login */
 				$msg = __( 'Failed to retrieve password for user %s', 'safety-passwords' );
 				if ( $reset instanceof WP_Error ) {
 					$msg .= ': ' . implode( '; ', $reset->get_error_messages() );
@@ -99,11 +102,14 @@ class Controller {
 	}
 
 	public static function user_profile_update_errors( WP_Error $errors, $update, $user ): WP_Error {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( ! empty( $_POST["pass1"] ) ) {
 			// This might be either password update or user creation as well.
 			// We need to check if the password is secure in both cases.
 			// But even if the password is secure, we need to force user to reset it after registration when
 			// the account is being created by another user.
+
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing
 			if ( ! self::is_password_secure( $_POST["pass1"] ) ) {
 				$errors->add( 'pass', self::get_weak_password_message() );
 				return $errors;
@@ -151,8 +157,9 @@ class Controller {
 			return $errors;
 		}
 
-		if ( isset( $_POST["pass1"] ) ) {
-			if ( ! self::is_password_secure( $_POST["pass1"] ) ) {
+
+		if ( isset( $_POST["pass1"] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			if ( ! self::is_password_secure( $_POST["pass1"] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 				$errors->add( 'pass', self::get_weak_password_message() );
 			}
 
@@ -190,6 +197,7 @@ class Controller {
 
 		// Log the results.
 		$string = sprintf(
+			/* Translators: %1$s - number of users to reset password, %2$s - number of users to remind to reset password */
 			__('Number of users to reset password: %1$sNumber of users to remind to reset password: %2$s', 'safety-passwords' ),
 			count( $resetUsers ),
 			count( $preInitedUsers ),
@@ -254,6 +262,7 @@ class Controller {
 				if ( true !== $reset ) {
 					// Something went wrong when trying to reset the password.
 					$msg = sprintf(
+						/* Translators: %s - user login and email */
 						__( "Failed to reset password for user %s", 'safety-passwords' ),
 						"{$wp_user->user_login} [{$wp_user->user_email}]"
 					);
