@@ -1,7 +1,7 @@
-# DEV Environment for cf7-telegram WordPress plugin
+# DEV Environment for Safety Passwords WordPress plugin
 
 ## Requirements
-Linux, Docker Compose
+Linux or WSL2, Make, Docker Compose
 
 ## Notice
 Call all commands from root project directory.
@@ -18,4 +18,4 @@ Don't forget update your hosts file
 `127.0.0.1 safetypasswords.local`.
 
 ## Development
-Working directory `plugin-dir`.
+WP plugin directory `plugin-dir`.
