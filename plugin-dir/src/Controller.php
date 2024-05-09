@@ -6,6 +6,8 @@ use WP_Error;
 use WP_User;
 
 class Controller {
+	const PASSWORD_CHECK_FAILURE_CODE = 'pass';
+
 	public static function init(): void {
 		// @todo Handling pre_inited when user is already logged in.
 
@@ -110,8 +112,7 @@ class Controller {
 			// the account is being created by another user.
 
 			// phpcs:ignore WordPress.Security.NonceVerification.Missing
-			if ( ! self::is_password_secure( $_POST["pass1"] ) ) {
-				$errors->add( 'pass', self::get_weak_password_message() );
+			if ( ! self::is_password_secure( $_POST["pass1"], $errors ) ) {
 				return $errors;
 			}
 
@@ -147,41 +148,63 @@ class Controller {
 	/**
 	 * Fires exactly after password reset form submission.
 	 *
-	 * @param $errors
-	 * @param $user
+	 * @param WP_Error $errors
+	 * @param WP_User|WP_Error  $user
 	 *
-	 * @return mixed
+	 * @return WP_Error
 	 */
-	public static function validate_password_reset( $errors, $user = null ) {
+	public static function validate_password_reset( WP_Error $errors, $user = null ): WP_Error {
 		if ( ! $user instanceof WP_User ) {
 			return $errors;
 		}
 
-
-		if ( isset( $_POST["pass1"] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			if ( ! self::is_password_secure( $_POST["pass1"] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-				$errors->add( 'pass', self::get_weak_password_message() );
-			}
-
-			if ( ! $errors->get_error_data( "pass" ) ) {
-				// Password is secure, remove the flag
-				update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
-				delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
-				delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited' );
-			}
-
-			return $errors;
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( isset( $_POST["pass1"] ) && self::is_password_secure( $_POST["pass1"], $errors ) ) {
+			// Password is secure, remove the flag
+			update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
+			delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
+			delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited' );
 		}
 
 		return $errors;
 	}
 
-	public static function is_password_secure( $i ): bool {
+	public static function is_password_secure( $i, WP_Error &$errors = null ): bool {
 		$length      = strlen( $i ) >= Settings::getOption( 'min_len' );
 		$has_lower   = preg_match( '/[a-z]/', $i );
 		$has_upper   = preg_match( '/[A-Z]/', $i );
 		$has_number  = preg_match( '/[0-9]/', $i );
 		$has_special = preg_match( '/[^a-zA-Z0-9]/', $i );
+
+		if ( $errors ) {
+			if ( ! $length ) {
+				$errors->add( self::PASSWORD_CHECK_FAILURE_CODE,
+					sprintf(
+						/* Translators: %s - minimum password length */
+						__( 'Password is too short. It must be at least %s characters long.', 'safety-passwords' ),
+						Settings::getOption( 'min_len' )
+					) );
+			}
+
+			if ( ! $has_lower ) {
+				$errors->add( self::PASSWORD_CHECK_FAILURE_CODE,
+					__( 'Password must contain at least one lowercase letter.', 'safety-passwords' ) );
+			}
+
+			if ( ! $has_upper ) {
+				$errors->add( self::PASSWORD_CHECK_FAILURE_CODE,
+					__( 'Password must contain at least one uppercase letter.', 'safety-passwords' ) );
+			}
+
+			if ( ! $has_number ) {
+				$errors->add( self::PASSWORD_CHECK_FAILURE_CODE, __( 'Password must contain at least one number.', 'safety-passwords' ) );
+			}
+
+			if ( ! $has_special ) {
+				$errors->add( self::PASSWORD_CHECK_FAILURE_CODE,
+					__( 'Password must contain at least one special character.', 'safety-passwords' ) );
+			}
+		}
 
 		// All the checks should be true
 		return $length && $has_lower && $has_upper && $has_number && $has_special;
@@ -285,10 +308,6 @@ class Controller {
 				$preInitedUsers[] = $user_id;
 			}
 		}
-	}
-
-	public static function get_weak_password_message(): string {
-		return __( "Please use a <strong>strong</strong> password to comply this site's security measures.", 'safety-passwords' );
 	}
 
 	public static function get_password_reset_message(): string {

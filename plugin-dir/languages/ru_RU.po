@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Safety Passwords\n"
-"POT-Creation-Date: 2024-04-16 15:30+0400\n"
-"PO-Revision-Date: 2024-04-16 15:32+0400\n"
+"POT-Creation-Date: 2024-05-09 18:26+0400\n"
+"PO-Revision-Date: 2024-05-09 18:27+0400\n"
 "Last-Translator: Igor Tron <root@itron.pro>\n"
 "Language-Team: \n"
 "Language: ru_RU\n"
@@ -28,12 +28,33 @@ msgstr ""
 msgid "Failed to retrieve password for user %s"
 msgstr "Не удалось восстановить пароль для пользователя %s"
 
-#: src/Controller.php:195
+#: src/Controller.php:190
+#, php-format
+msgid "Password is too short. It must be at least %s characters long."
+msgstr "Пароль слишком короткий. Его длина должна быть не менее %s символов."
+
+#: src/Controller.php:197
+msgid "Password must contain at least one lowercase letter."
+msgstr "Пароль должен содержать хотя бы одну строчную букву."
+
+#: src/Controller.php:202
+msgid "Password must contain at least one uppercase letter."
+msgstr "Пароль должен содержать хотя бы одну заглавную букву."
+
+#: src/Controller.php:206
+msgid "Password must contain at least one number."
+msgstr "Пароль должен содержать хотя бы одну цифру."
+
+#: src/Controller.php:211
+msgid "Password must contain at least one special character."
+msgstr "Пароль должен содержать хотя бы один специальный символ."
+
+#: src/Controller.php:224
 #, fuzzy
 msgid "Checking users for password reset."
 msgstr "Проверка пользователей на сброс пароля."
 
-#: src/Controller.php:201
+#: src/Controller.php:230
 #, php-format
 msgid ""
 "Number of users to reset password: %1$sNumber of users to remind to reset "
@@ -42,7 +63,7 @@ msgstr ""
 "Количество пользователей для сброса пароля: %1$sКоличество пользователей, "
 "которым нужно напомнить о сбросе пароля: %2$s"
 
-#: src/Controller.php:223
+#: src/Controller.php:252
 #, php-format
 msgid ""
 "Hi there, %1$s!%3$sWe noticed you have not had a chance to reset your "
@@ -53,12 +74,12 @@ msgstr ""
 "ничего страшного.%3$sПожалуйста, сделайте это сейчас, перейдя по следующей "
 "ссылке: <%2$s>"
 
-#: src/Controller.php:266
+#: src/Controller.php:295
 #, php-format
 msgid "Failed to reset password for user %s"
 msgstr "Не удалось сбросить пароль для пользователя %s"
 
-#: src/Controller.php:291
+#: src/Controller.php:320
 msgid ""
 "Please use a <strong>strong</strong> password to comply this site's security "
 "measures."
@@ -66,7 +87,7 @@ msgstr ""
 "Пожалуйста, используйте <strong>надежный</strong> пароль для соблюдения мер "
 "безопасности этого сайта."
 
-#: src/Controller.php:295
+#: src/Controller.php:324
 msgid ""
 "Please <strong>reset your password</strong> to continue. Follow the "
 "instructions in the email that was sent to you."
