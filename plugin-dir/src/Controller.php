@@ -6,6 +6,8 @@ use WP_Error;
 use WP_User;
 
 class Controller {
+	const PASSWORD_CHECK_FAILURE_CODE = 'pass';
+
 	public static function init(): void {
 		// @todo Handling pre_inited when user is already logged in.
 
@@ -176,12 +178,42 @@ class Controller {
 		return $errors;
 	}
 
-	public static function is_password_secure( $i ): bool {
+	public static function is_password_secure( $i, WP_Error &$errors = null ): bool {
 		$length      = strlen( $i ) >= Settings::getOption( 'min_len' );
 		$has_lower   = preg_match( '/[a-z]/', $i );
 		$has_upper   = preg_match( '/[A-Z]/', $i );
 		$has_number  = preg_match( '/[0-9]/', $i );
 		$has_special = preg_match( '/[^a-zA-Z0-9]/', $i );
+
+		if ( $errors ) {
+			if ( ! $length ) {
+				$errors->add( self::PASSWORD_CHECK_FAILURE_CODE,
+					sprintf(
+						/* Translators: %s - minimum password length */
+						__( 'Password is too short. It must be at least %s characters long.', 'safety-passwords' ),
+						Settings::getOption( 'min_len' )
+					) );
+			}
+
+			if ( ! $has_lower ) {
+				$errors->add( self::PASSWORD_CHECK_FAILURE_CODE,
+					__( 'Password must contain at least one lowercase letter.', 'safety-passwords' ) );
+			}
+
+			if ( ! $has_upper ) {
+				$errors->add( self::PASSWORD_CHECK_FAILURE_CODE,
+					__( 'Password must contain at least one uppercase letter.', 'safety-passwords' ) );
+			}
+
+			if ( ! $has_number ) {
+				$errors->add( self::PASSWORD_CHECK_FAILURE_CODE, __( 'Password must contain at least one number.', 'safety-passwords' ) );
+			}
+
+			if ( ! $has_special ) {
+				$errors->add( self::PASSWORD_CHECK_FAILURE_CODE,
+					__( 'Password must contain at least one special character.', 'safety-passwords' ) );
+			}
+		}
 
 		// All the checks should be true
 		return $length && $has_lower && $has_upper && $has_number && $has_special;
