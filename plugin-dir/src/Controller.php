@@ -112,8 +112,7 @@ class Controller {
 			// the account is being created by another user.
 
 			// phpcs:ignore WordPress.Security.NonceVerification.Missing
-			if ( ! self::is_password_secure( $_POST["pass1"] ) ) {
-				$errors->add( 'pass', self::get_weak_password_message() );
+			if ( ! self::is_password_secure( $_POST["pass1"], $errors ) ) {
 				return $errors;
 			}
 
@@ -149,30 +148,22 @@ class Controller {
 	/**
 	 * Fires exactly after password reset form submission.
 	 *
-	 * @param $errors
-	 * @param $user
+	 * @param WP_Error $errors
+	 * @param WP_User|WP_Error  $user
 	 *
-	 * @return mixed
+	 * @return WP_Error
 	 */
-	public static function validate_password_reset( $errors, $user = null ) {
+	public static function validate_password_reset( WP_Error $errors, $user = null ): WP_Error {
 		if ( ! $user instanceof WP_User ) {
 			return $errors;
 		}
 
-
-		if ( isset( $_POST["pass1"] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			if ( ! self::is_password_secure( $_POST["pass1"] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-				$errors->add( 'pass', self::get_weak_password_message() );
-			}
-
-			if ( ! $errors->get_error_data( "pass" ) ) {
-				// Password is secure, remove the flag
-				update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
-				delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
-				delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited' );
-			}
-
-			return $errors;
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( isset( $_POST["pass1"] ) && self::is_password_secure( $_POST["pass1"], $errors ) ) {
+			// Password is secure, remove the flag
+			update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
+			delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
+			delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited' );
 		}
 
 		return $errors;
@@ -317,10 +308,6 @@ class Controller {
 				$preInitedUsers[] = $user_id;
 			}
 		}
-	}
-
-	public static function get_weak_password_message(): string {
-		return __( "Please use a <strong>strong</strong> password to comply this site's security measures.", 'safety-passwords' );
 	}
 
 	public static function get_password_reset_message(): string {
