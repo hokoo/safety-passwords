@@ -28,7 +28,7 @@ jobs:
         run: |
           find . -mindepth 1 -maxdepth 1 -not -name 'plugin-dir' -exec rm -rf {} +
 
-      # Rename plugin directory to the plugin name aws-polly
+      # Rename plugin directory to the plugin name
       - run: mv plugin-dir safety-passwords
 
       # Zip the plugin directory
