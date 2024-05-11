@@ -10,13 +10,14 @@ License: GPL2
 
 namespace iTRON\SafetyPasswords;
 
-define( 'PLUGIN_SLUG', 'safety-passwords' );
-define( 'PLUGIN_NAME', plugin_basename( __FILE__ ) );
-define( 'PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'PLUGIN_MAIN_FILE_PATH', __FILE__ );
-define( 'VERSION', '1.0' );
-define( 'OPTIONS_MODE', is_multisite() ? 'network' : 'theme_options' );
+const PLUGIN_SLUG = 'safety-passwords';
+const VERSION     = '1.0';
+
+const PLUGIN_MAIN_FILE_PATH = __FILE__;
+define( __NAMESPACE__ . '\PLUGIN_NAME', plugin_basename( __FILE__ ) );
+define( __NAMESPACE__ . '\PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( __NAMESPACE__ . '\PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( __NAMESPACE__ . '\OPTIONS_MODE', is_multisite() ? 'network' : 'theme_options' );
 
 require_once __DIR__ . '/vendor/autoload.php';
 

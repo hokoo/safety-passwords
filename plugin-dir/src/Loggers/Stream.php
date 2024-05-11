@@ -1,4 +1,11 @@
 <?php
+/**
+ * Logger integration for the Stream plugin.
+ * @see https://wordpress.org/plugins/stream/
+ * @see https://github.com/xwp/stream/wiki/Creating-a-Custom-Connector
+ *
+ * @package iTRON\SafetyPasswords\Loggers
+ */
 
 namespace iTRON\SafetyPasswords\Loggers;
 
@@ -14,6 +21,7 @@ class Stream extends AbstractLogger {
 					return is_scalar( $value ) ? $value : wp_json_encode( $value, JSON_UNESCAPED_UNICODE );
 				}, $context );
 			}
+			// Notice for reviewers: this hook has to be exactly like this, because of integration with the Stream plugin.
 			do_action( 'safety_passwords_stream_logger_write', $level, $message, $meta, $module );
 		};
 

@@ -1,4 +1,11 @@
 <?php
+/**
+ * Logger integration for the Stream plugin.
+ * @see https://wordpress.org/plugins/stream/
+ * @see https://github.com/xwp/stream/wiki/Creating-a-Custom-Connector
+ *
+ * @package iTRON\SafetyPasswords\Integrations
+ */
 
 namespace iTRON\SafetyPasswords\Integrations;
 
