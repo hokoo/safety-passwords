@@ -29,8 +29,9 @@ class Controller {
 	public static function login_redirect( $redirect, $requested_redirect_to, $user ) {
 		// User didn't manage to log in.
 		if ( ! $user instanceof WP_User ) {
+			// We can not perform nonce verification here, because the nonce is not passed as a request parameter.
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$user = sanitize_user( $_REQUEST['log'] );
+			$user = sanitize_user( $_REQUEST['log'] ?? '' );
 			$user = get_user_by( 'login', $user ) ?: get_user_by( 'email', $user );
 
 			if ( empty( $user ) ) {
@@ -99,19 +100,13 @@ class Controller {
 	}
 
 	public static function user_profile_update_errors( WP_Error $errors, $update, $user ): WP_Error {
-		/**
-		 * Notice for reviewers: we NEVER need to sanitize the PASSWORD.
-		 * @see https://wordpress.org/support/topic/do-not-sanitize-the-password/
-		 */
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$new_pass = $_POST["pass1"];
-		if ( ! empty( $new_pass ) ) {
+		if ( ! empty( $user->user_pass ) ) {
 			// This might be either password update or user creation as well.
 			// We need to check if the password is secure in both cases.
 			// But even if the password is secure, we need to force user to reset it after registration when
 			// the account is being created by another user.
 
-			if ( ! self::is_password_secure( $new_pass, $errors ) ) {
+			if ( ! self::is_password_secure( $user->user_pass, $errors ) ) {
 				return $errors;
 			}
 
@@ -158,12 +153,25 @@ class Controller {
 		}
 
 		/**
-		 * Notice for reviewers: we NEVER need to sanitize the PASSWORD.
+		 * Notice for reviewers:
+		 * We NEVER need to sanitize the PASSWORD.
 		 * @see https://wordpress.org/support/topic/do-not-sanitize-the-password/
 		 */
+
+		/**
+		 * Notice for reviewers:
+		 * This function does not run in global scope. It is hooked on 'validate_password_reset' action,
+		 * which is fired after the password reset form submission is validated by means of the user's cookie.
+		 * So, it is safe to use the $_POST global variable here.
+		 *
+		 * Remember also, we are acting in the context of the password reset form submission.
+		 * So, we can not perform nonce verification here, because the nonce is not passed as a request parameter.
+		 * We can not verify the user by 'current_user_can' function, because the user is not logged in yet.
+		 * Finally, the password is not passed as a parameter to the hook,
+		 * but it is only available in the $_POST global variable.
+		 */
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$new_pass = $_POST["pass1"];
-		if ( ! empty( $new_pass ) && self::is_password_secure( $new_pass, $errors ) ) {
+		if ( ! empty( $_POST["pass1"] ) && self::is_password_secure( $_POST["pass1"], $errors ) ) {
 			// Password is secure, remove the flag
 			update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
 			delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
