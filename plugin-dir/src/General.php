@@ -41,7 +41,7 @@ class General {
 		add_action( 'itron/safety-passwords/activate', [ self::class, 'processSecondPhaseActivation' ] );
 		add_action( 'admin_bar_menu', [ self::class, 'addAdminBarMenu' ], 60,1 );
 		add_action( 'personal_options', [ self::class, 'addUserProfileNotice' ], 20, 1 );
-		add_action( 'admin_head', [ self::class, 'addAdminStyles' ] );
+		add_action( 'admin_enqueue_scripts', [ self::class, 'addAdminStyles' ] );
 		add_action( 'plugins_loaded', [ self::class, 'loadTranslations' ] );
 		add_action( 'init', function () {
 			self::$logger = $this->initLogger();
@@ -153,12 +153,7 @@ class General {
 	}
 
 	public static function addAdminStyles() {
-		echo <<<STYLE
-<style>
-.safety-passwords-reminder,.safety-passwords-reminder:hover{}
-.safety-passwords-reminder .ab-item,.safety-passwords-reminder .ab-item:hover{background-color:#ff9900!important;color:#000!important;}
-</style>
-STYLE;
+		wp_enqueue_style( 'safety-passwords', PLUGIN_URL . 'assets/css/admin/style.css', [], VERSION );
 	}
 
 	public static function echoNotice( string $message, string $type = 'info' ) {

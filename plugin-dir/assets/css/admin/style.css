@@ -1,0 +1,6 @@
+.safety-passwords-reminder, .safety-passwords-reminder:hover {}
+
+.safety-passwords-reminder .ab-item, .safety-passwords-reminder .ab-item:hover {
+    background-color: #ff9900 !important;
+    color: #000 !important;
+}
