@@ -30,15 +30,10 @@ class Controller {
 		// User didn't manage to log in.
 		if ( ! $user instanceof WP_User ) {
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			if ( ! isset( $_REQUEST['log'] ) ) {
-				return $redirect;
-			}
+			$user = sanitize_user( $_REQUEST['log'] );
+			$user = get_user_by( 'login', $user ) ?: get_user_by( 'email', $user );
 
-			// Retrieve user object from user log
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$user = get_user_by( 'login', $_REQUEST['log'] ) ?: get_user_by( 'email', $_REQUEST['log'] );
-
-			if ( ! $user ) {
+			if ( empty( $user ) ) {
 				return $redirect;
 			}
 
@@ -104,15 +99,19 @@ class Controller {
 	}
 
 	public static function user_profile_update_errors( WP_Error $errors, $update, $user ): WP_Error {
+		/**
+		 * Notice for reviewers: we NEVER need to sanitize the PASSWORD.
+		 * @see https://wordpress.org/support/topic/do-not-sanitize-the-password/
+		 */
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		if ( ! empty( $_POST["pass1"] ) ) {
+		$new_pass = $_POST["pass1"];
+		if ( ! empty( $new_pass ) ) {
 			// This might be either password update or user creation as well.
 			// We need to check if the password is secure in both cases.
 			// But even if the password is secure, we need to force user to reset it after registration when
 			// the account is being created by another user.
 
-			// phpcs:ignore WordPress.Security.NonceVerification.Missing
-			if ( ! self::is_password_secure( $_POST["pass1"], $errors ) ) {
+			if ( ! self::is_password_secure( $new_pass, $errors ) ) {
 				return $errors;
 			}
 
@@ -158,8 +157,13 @@ class Controller {
 			return $errors;
 		}
 
+		/**
+		 * Notice for reviewers: we NEVER need to sanitize the PASSWORD.
+		 * @see https://wordpress.org/support/topic/do-not-sanitize-the-password/
+		 */
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		if ( isset( $_POST["pass1"] ) && self::is_password_secure( $_POST["pass1"], $errors ) ) {
+		$new_pass = $_POST["pass1"];
+		if ( ! empty( $new_pass ) && self::is_password_secure( $new_pass, $errors ) ) {
 			// Password is secure, remove the flag
 			update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
 			delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
