@@ -13,29 +13,42 @@ Enforce users to use strong passwords.
 
 == Description ==
 This plugin enforces users to use strong passwords. It means that when a user changes his password, the password must contain at least:
- * one uppercase letter
- * one lowercase letter
- * one number
- * one special character
 
- The minimum length of the password is defined by the plugin setting.
+ * one uppercase letter;
+ * one lowercase letter;
+ * one number;
+ * one special character.
 
- You can also define the period of time after which the user will be forced to change his password.
+The minimum length of the password is defined by the plugin's settings.
 
- The important feature of the plugin is settings defining by means of PHP constants.
+You can also define the period of time after which the user will be forced to change his password.
+
+The important feature of the plugin is settings defining by means of PHP constants.
 
  * SAFETY_PASSWORDS_MIN_LENGTH - the minimum length of the password;
  * SAFETY_PASSWORDS_RESET_INTERVAL - the period of time after which the user will be forced to change his password;
  * SAFETY_PASSWORDS_RP_ON_REGISTRATION - enforce users to change their password after registration.
 
- The plugin has integration with the Stream plugin.
+Integrations with other plugins:
+
+ * The plugin has integration with the Stream plugin.
+
+Plugin development is on the [GitHub](https://github.com/hokoo/safety-passwords).
+
+== Screenshots ==
+1. Settings page
+2. Setting are overridden by PHP constants
+3. Password change notification
+4. Password change urgency notification
+5. Seamless password change form
+6. Weak password is not allowed
 
 == Installation ==
 0. Upload plugin to the `/wp-content/plugins/` directory
 1. Activate the plugin through the \'Plugins\' menu in WordPress
 2. Go to Safety Passwords settings page and configure the plugin.
 
-== Screenshots ==
-1. Settings page
 
 == Changelog ==
+= 1.0 =
+* Initial release
