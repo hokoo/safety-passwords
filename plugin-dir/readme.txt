@@ -25,9 +25,9 @@ You can also define the period of time after which the user will be forced to ch
 
 The important feature of the plugin is settings defining by means of PHP constants.
 
- * SAFETY_PASSWORDS_MIN_LENGTH - the minimum length of the password;
- * SAFETY_PASSWORDS_RESET_INTERVAL - the period of time after which the user will be forced to change his password;
- * SAFETY_PASSWORDS_RP_ON_REGISTRATION - enforce users to change their password after registration.
+ * <code>SAFETY_PASSWORDS_MIN_LENGTH</code> - (int/string, number of symbols) the minimum length of the password;
+ * <code>SAFETY_PASSWORDS_RESET_INTERVAL</code> - (int/string, days) the period of time after which the user will be forced to change his password;
+ * <code>SAFETY_PASSWORDS_RP_ON_REGISTRATION</code> - (bool) whether enforce users to change their password after registration or not.
 
 Integrations with other plugins:
 
