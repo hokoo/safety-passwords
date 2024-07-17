@@ -5,7 +5,7 @@ Donate link: https://www.paypal.me/igortron
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.0
+Stable tag: 1.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -50,5 +50,8 @@ Plugin development is on the [GitHub](https://github.com/hokoo/safety-passwords)
 
 
 == Changelog ==
+= 1.1 =
+* Failing to set 0 as the password reset interval and 1 as the minimum password length fixed.
+
 = 1.0 =
 * Initial release
