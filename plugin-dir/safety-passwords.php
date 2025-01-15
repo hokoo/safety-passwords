@@ -3,7 +3,7 @@
 Plugin Name: Safety Passwords
 Description: Forces all users to have a strong password.
 Network: true
-Version: 1.1
+Version: 1.2
 Author: iTRON
 License: GPL2
 */
@@ -11,7 +11,7 @@ License: GPL2
 namespace iTRON\SafetyPasswords;
 
 const PLUGIN_SLUG = 'safety-passwords';
-const VERSION     = '1.1';
+const VERSION     = '1.2';
 
 const PLUGIN_MAIN_FILE_PATH = __FILE__;
 define( __NAMESPACE__ . '\PLUGIN_NAME', plugin_basename( __FILE__ ) );
