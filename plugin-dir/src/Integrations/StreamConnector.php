@@ -101,6 +101,9 @@ class StreamConnector extends Connector {
 	 * @return void
 	 */
 	public function callback_safety_passwords_stream_logger_write( $level, $message, $data, $module ) {
+		// Getting $message sprintf-ready error message string.
+		$message = str_replace('%', '%%', $message );
+
 		$res = $this->log( $message, $data, 0, $module, $level );
 	}
 }
