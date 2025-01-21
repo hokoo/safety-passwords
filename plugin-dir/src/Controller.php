@@ -227,6 +227,9 @@ class Controller {
 			return;
 		}
 
+		$resetUsers	    = [];
+		$preInitedUsers = [];
+
 		General::getLogger()->info( __( 'Checking users for password reset.', 'safety-passwords' ) );
 		self::checkUsers( $resetUsers, $preInitedUsers );
 
