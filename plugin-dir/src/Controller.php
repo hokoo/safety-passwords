@@ -233,7 +233,7 @@ class Controller {
 		// Log the results.
 		$string = sprintf(
 			/* Translators: %1$s - number of users to reset password, %2$s - number of users to remind to reset password */
-			__('Number of users to reset password: %1$sNumber of users to remind to reset password: %2$s', 'safety-passwords' ),
+			__('Number of users to reset password immediately: %1$s. Number of users to remind to reset password soon: %2$s', 'safety-passwords' ),
 			count( $resetUsers ),
 			count( $preInitedUsers ),
 		);
