@@ -51,13 +51,13 @@ Plugin development is on the [GitHub](https://github.com/hokoo/safety-passwords)
 
 == Changelog ==
 = 1.3 =
-* Stream plugin integration fixed. https://github.com/hokoo/safety-passwords/issues/6
+* Fatal error on cron even fixed in php 8. https://github.com/hokoo/safety-passwords/issues/6
 * Text of a log message fixed.
 * php.ini added for local dev.
 * error log watcher git fixed for local dev.
 
 = 1.2 =
-* Fatal error on cron even fixed in php 8. https://github.com/hokoo/safety-passwords/issues/11
+* Stream plugin integration fixed. https://github.com/hokoo/safety-passwords/issues/11
 
 = 1.1 =
 * Failing to set 0 as the password reset interval and 1 as the minimum password length fixed.
