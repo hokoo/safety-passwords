@@ -11,7 +11,7 @@ docker.build.php:
 	docker-compose -p safetypasswords up -d --build php
 
 php.log:
-	docker-compose -p safetypasswords exec php sh -c "tail -f /var/log/nginx/safetypasswords.local.error.log"
+	docker-compose -p safetypasswords exec php sh -c "tail -f /var/log/php-error.log"
 
 clear.all:
 	bash ./install/clear.sh
