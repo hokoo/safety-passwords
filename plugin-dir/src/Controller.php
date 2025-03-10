@@ -8,6 +8,8 @@ use WP_User;
 class Controller {
 	const PASSWORD_CHECK_FAILURE_CODE = 'pass';
 
+	const USER_STOP_LIST_META_KEY = 'safety-passwords_stop-list';
+
 	public static function init(): void {
 		// @todo Handling pre_inited when user is already logged in.
 
@@ -106,7 +108,9 @@ class Controller {
 			// But even if the password is secure, we need to force user to reset it after registration when
 			// the account is being created by another user.
 
-			if ( ! self::is_password_secure( $user->user_pass, $errors ) ) {
+			// It is ok to use the wp_get_current_user() function here even when the user is being created.
+			// Because it would prevent the creating user from using one of the passwords from their stop-list.
+			if ( ! self::is_password_secure( $user->user_pass, wp_get_current_user(), $errors ) ) {
 				return $errors;
 			}
 
@@ -133,6 +137,10 @@ class Controller {
 				update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
 				delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
 				delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited' );
+
+				// Add the password to the user's stop-list to prevent using it in the future.
+				self::addToStopList( $user->user_pass, get_user_by( 'ID', $user->ID ) ?: wp_get_current_user() );
+
 			}, 10, 2 );
 		}
 
@@ -171,22 +179,26 @@ class Controller {
 		 * but it is only available in the $_POST global variable.
 		 */
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		if ( ! empty( $_POST["pass1"] ) && self::is_password_secure( $_POST["pass1"], $errors ) ) {
+		if ( ! empty( $_POST["pass1"] ) && self::is_password_secure( $_POST["pass1"], $user, $errors ) ) {
 			// Password is secure, remove the flag
 			update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
 			delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
 			delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited' );
+
+			// Add the password to the user's stop-list to prevent using it in the future.
+			self::addToStopList( $_POST["pass1"], $user );
 		}
 
 		return $errors;
 	}
 
-	public static function is_password_secure( $i, WP_Error &$errors = null ): bool {
+	public static function is_password_secure( $i, WP_User $user, WP_Error &$errors = null ): bool {
 		$length      = strlen( $i ) >= Settings::getOption( 'min_len' );
 		$has_lower   = preg_match( '/[a-z]/', $i );
 		$has_upper   = preg_match( '/[A-Z]/', $i );
 		$has_number  = preg_match( '/[0-9]/', $i );
 		$has_special = preg_match( '/[^a-zA-Z0-9]/', $i );
+		$never_used  = ! self::isPasswordInStopList( $i, $user );
 
 		if ( $errors ) {
 			if ( ! $length ) {
@@ -216,10 +228,15 @@ class Controller {
 				$errors->add( self::PASSWORD_CHECK_FAILURE_CODE,
 					__( 'Password must contain at least one special character.', 'safety-passwords' ) );
 			}
+
+			if ( ! $never_used ) {
+				$errors->add( self::PASSWORD_CHECK_FAILURE_CODE,
+					__( 'This password has already been used before. Please choose a unique one.', 'safety-passwords' ) );
+			}
 		}
 
 		// All the checks should be true
-		return $length && $has_lower && $has_upper && $has_number && $has_special;
+		return $length && $has_lower && $has_upper && $has_number && $has_special && $never_used;
 	}
 
 	public static function findExpiringPasswords(): void {
@@ -327,5 +344,34 @@ class Controller {
 
 	public static function get_password_reset_message(): string {
 		return __( "Please <strong>reset your password</strong> to continue. Follow the instructions in the email that was sent to you.", 'safety-passwords' );
+	}
+
+	private static function isPasswordInStopList( $password, WP_User $user ): bool {
+		$stopList = get_user_meta( $user->ID, self::USER_STOP_LIST_META_KEY, true );
+		if ( ! is_array( $stopList ) ) {
+			return false;
+		}
+
+		foreach ( $stopList as $stopHash ) {
+			if ( wp_check_password( $password, $stopHash ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static function addToStopList( $password, WP_User $user ): void {
+		if ( self::isPasswordInStopList( $password, $user ) ) {
+			return;
+		}
+
+		$stopList = get_user_meta( $user->ID, self::USER_STOP_LIST_META_KEY, true );
+		if ( ! is_array( $stopList ) ) {
+			$stopList = [];
+		}
+
+		$stopList[] = wp_hash_password( $password );
+		update_user_meta( $user->ID, self::USER_STOP_LIST_META_KEY, $stopList );
 	}
 }
