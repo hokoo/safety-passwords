@@ -17,7 +17,9 @@ This plugin enforces users to use strong passwords. It means that when a user ch
  * one uppercase letter;
  * one lowercase letter;
  * one number;
- * one special character.
+ * one special character
+
+ and should be never used before.
 
 The minimum length of the password is defined by the plugin's settings.
 
