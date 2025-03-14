@@ -361,7 +361,7 @@ class Controller {
 		return false;
 	}
 
-	private static function addToStopList( $password, WP_User $user ): void {
+	private static function addToStopList( $password, WP_User $user, bool $isHash = false ): void {
 		if ( self::isPasswordInStopList( $password, $user ) ) {
 			return;
 		}
@@ -371,7 +371,19 @@ class Controller {
 			$stopList = [];
 		}
 
-		$stopList[] = wp_hash_password( $password );
+		$stopList[] = $isHash ? $password : wp_hash_password( $password );
 		update_user_meta( $user->ID, self::USER_STOP_LIST_META_KEY, $stopList );
+	}
+
+	public static function putCurrentPasswordsToStopList(): void {
+		$users = get_users( ['fields' => 'ids'] );
+		foreach ( $users as $user_id ) {
+			$user = get_user_by( 'ID', $user_id );
+			if ( ! $user instanceof WP_User ) {
+				continue;
+			}
+
+			self::addToStopList( $user->user_pass, $user, true );
+		}
 	}
 }

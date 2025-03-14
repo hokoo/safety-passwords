@@ -39,6 +39,7 @@ class General {
 
 		add_action( Cron::EVENT_NAME, [ Controller::class, 'findExpiringPasswords' ] );
 		add_action( 'itron/safety-passwords/activate', [ self::class, 'processSecondPhaseActivation' ] );
+		add_action( 'itron/safety-passwords/activate', [ Controller::class, 'putCurrentPasswordsToStopList' ], 20 );
 		add_action( 'admin_bar_menu', [ self::class, 'addAdminBarMenu' ], 60,1 );
 		add_action( 'personal_options', [ self::class, 'addUserProfileNotice' ], 20, 1 );
 		add_action( 'admin_enqueue_scripts', [ self::class, 'addAdminStyles' ] );
