@@ -5,7 +5,7 @@ Donate link: https://www.paypal.me/igortron
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4
+Stable tag: 1.4.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,9 @@ Plugin development is on the [GitHub](https://github.com/hokoo/safety-passwords)
 
 
 == Changelog ==
+= 1.4.1 =
+* Put currently used passwords to the stop list on activation.
+
 = 1.4 =
 * Previously used password are not allowed to use again.
 
