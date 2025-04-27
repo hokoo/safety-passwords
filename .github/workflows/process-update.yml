@@ -1,0 +1,82 @@
+name: Process Update
+on:
+  release:
+    types:
+      - published
+
+permissions: write-all
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the source code
+        uses: actions/checkout@v3
+
+      - uses: shivammathur/setup-php@v2
+        name: Set up PHP
+        with:
+          php-version: 8.2
+          coverage: none
+
+      - name: Install PHP Dependencies
+        uses: ramsey/composer-install@v2
+        with:
+          working-directory: plugin-dir
+          composer-options: "--no-dev"
+
+      - name: Remove all files and directories except plugin directory
+        run: |
+          find . -mindepth 1 -maxdepth 1 -not -name 'plugin-dir' -not -name '.git' -exec rm -rf {} +
+
+      # Rename plugin directory to the plugin name
+      - run: mv plugin-dir safety-passwords
+
+      # Zip the plugin directory
+      - name: Zip the plugin directory
+        run: zip -r safety-passwords-wp-plugin.zip safety-passwords
+
+      - name: Upload Release Artifact
+        uses: AButler/upload-release-assets@v3.0
+        with:
+          files: ./safety-passwords-wp-plugin.zip
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set target branch
+        id: branch
+        run: echo "branch_name=$([ '${{ github.event.release.prerelease }}' == 'true' ] && echo 'pre-release' || echo 'stable')" >> "$GITHUB_OUTPUT"
+
+      - name: Push to release branch
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          export TEMP_DIR=$(mktemp -d)
+          cp -r safety-passwords/* "$TEMP_DIR/"
+
+          git fetch origin ${{ steps.branch.outputs.branch_name }} || true
+          git worktree add --force dist-worktree origin/${{ steps.branch.outputs.branch_name }}
+
+          rm -rf dist-worktree/*
+          cp -r "$TEMP_DIR/"* dist-worktree/
+
+          cd dist-worktree
+          git add -f vendor
+          git add .
+          git commit -m "Update plugin build from release ${{ github.event.release.tag_name }}" || echo "No changes to commit"
+          git push origin HEAD:${{ steps.branch.outputs.branch_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare version without "v"
+        id: clean_version
+        run: echo "value=${{ github.event.release.tag_name }}" | sed -E 's/^(v-?|version-)//' >> $GITHUB_OUTPUT
+
+      - name: Deploy to WordPress.org (production only)
+        if: ${{ github.event.release.prerelease == false }}
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        env:
+          SVN_USERNAME: ${{ secrets.WPORG_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
+          BUILD_DIR: ./safety-passwords
+          SLUG: safety-passwords
+          VERSION: ${{ steps.clean_version.outputs.value }}
