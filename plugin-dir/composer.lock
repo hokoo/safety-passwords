@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "htmlburger/carbon-fields",
-            "version": "v3.6.3",
+            "version": "v3.6.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/htmlburger/carbon-fields.git",
-                "reference": "d913a5148cb9dc61ed239719c747f4ebb513003f"
+                "reference": "9cb536e775f3c0688e18fca39445326521197220"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/htmlburger/carbon-fields/zipball/d913a5148cb9dc61ed239719c747f4ebb513003f",
-                "reference": "d913a5148cb9dc61ed239719c747f4ebb513003f",
+                "url": "https://api.github.com/repos/htmlburger/carbon-fields/zipball/9cb536e775f3c0688e18fca39445326521197220",
+                "reference": "9cb536e775f3c0688e18fca39445326521197220",
                 "shasum": ""
             },
             "require": {
@@ -144,7 +144,7 @@
                 "issues": "https://github.com/htmlburger/carbon-fields/issues",
                 "source": "https://github.com/htmlburger/carbon-fields"
             },
-            "time": "2023-11-28T15:52:46+00:00"
+            "time": "2025-04-17T11:56:23+00:00"
         },
         {
             "name": "psr/log",
@@ -200,12 +200,12 @@
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {},
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
         "ext-json": "*"
     },
-    "platform-dev": [],
-    "plugin-api-version": "2.3.0"
+    "platform-dev": {},
+    "plugin-api-version": "2.6.0"
 }
