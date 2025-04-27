@@ -3,7 +3,7 @@
         'name' => 'hokoo/safety-passwords',
         'pretty_version' => 'v1.4.2',
         'version' => '1.4.2.0',
-        'reference' => 'aebd1df8bc5000925c16e8d358d10663db53fa18',
+        'reference' => 'b02062431f91c890b681a242dae09fbcbf73ca21',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'hokoo/safety-passwords' => array(
             'pretty_version' => 'v1.4.2',
             'version' => '1.4.2.0',
-            'reference' => 'aebd1df8bc5000925c16e8d358d10663db53fa18',
+            'reference' => 'b02062431f91c890b681a242dae09fbcbf73ca21',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
