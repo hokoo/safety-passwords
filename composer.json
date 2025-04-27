@@ -1,5 +1,5 @@
 {
-  "name": "hokoo/safety-passwords-infra",
+  "name": "hokoo/safety-passwords",
   "description": "",
   "license": "proprietary",
   "authors": [
@@ -15,35 +15,13 @@
     }
   ],
   "require": {
-    "johnpbloch/wordpress-core-installer": "*",
-    "composer/installers": "*",
-    "johnpbloch/wordpress": "*",
-    "johnbillion/query-monitor": "^3.7",
-    "wpackagist-plugin/wp-data-logger": "^2.0",
-    "wp-cli/wp-cli-bundle": "^2.10",
-    "wpackagist-plugin/wp-mail-smtp": "^4.0",
-    "wpackagist-plugin/wp-crontrol": "^1.16",
-    "wpackagist-plugin/stream": "^4.0",
-    "wpackagist-plugin/plugin-check": "^1.0"
+    "ext-json": "*",
+    "htmlburger/carbon-fields": "^3",
+    "psr/log": "^1.1"
   },
   "autoload": {
-  },
-  "extra": {
-    "installer-paths": {
-      "wordpress/wp-content/plugins/{$name}": [
-        "type:wordpress-plugin"
-      ]
-    }
-  },
-  "scripts": {
-    "pre-install-cmd": [],
-    "post-install-cmd": ["bash ./dev/setup.sh"],
-    "da": ["composer dump-autoload -o"]
-  },
-  "config": {
-    "allow-plugins": {
-      "composer/installers": true,
-      "johnpbloch/wordpress-core-installer": true
+    "psr-4": {
+      "iTRON\\SafetyPasswords\\": "src"
     }
   }
 }
