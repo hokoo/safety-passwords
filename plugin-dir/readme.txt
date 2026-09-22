@@ -25,6 +25,10 @@ The minimum length of the password is defined by the plugin's settings.
 
 You can also define the period of time after which the user will be forced to change his password.
 
+After the period expires, the periodic check starts a mandatory reset and attempts to send one recovery email. Later checks leave that reset pending, even if the email attempt fails. A successful password reset or profile password change clears the pending state and renews the period.
+
+Background reset emails and silent reset links also work on WordPress 5.0 through 5.6, where the login-page recovery function is unavailable during periodic checks.
+
 Your own profile shows a countdown before the period ends, and the admin bar adds a reminder during the final seven days. Once the period ends, they ask you to change your password without showing a countdown. If a password reset has already been initiated, they ask you to use the password recovery form. Setting the reset interval to 0 hides these reminders.
 
 The important feature of the plugin is settings defining by means of PHP constants.

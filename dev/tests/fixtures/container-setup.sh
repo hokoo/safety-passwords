@@ -34,6 +34,10 @@ wp --user=integration-admin eval-file /test-fixtures/activation.php initial
 wp --user=integration-admin eval-file /test-fixtures/activation.php followup
 wp --user=integration-admin eval-file /test-fixtures/cron.php
 wp --user=integration-admin eval-file /test-fixtures/expiry-notices.php ordinary
+wp --user=integration-admin eval-file /test-fixtures/cron-reset-lifecycle.php first
+wp --user=integration-admin eval-file /test-fixtures/cron-reset-lifecycle.php second
+wp --user=integration-admin eval-file /test-fixtures/cron-reset-lifecycle.php cleanup
+wp safety check-users
 
 # Characterize current MU startup after ordinary plugin deactivation.
 wp plugin deactivate safety-passwords --quiet

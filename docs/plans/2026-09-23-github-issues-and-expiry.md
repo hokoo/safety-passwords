@@ -118,7 +118,7 @@ Notes/Risks: существующие public PHP-методы General прове
 
 ### T3. Корректное отображение срока смены пароля
 
-Status: review
+Status: completed
 Goal: понятное и одинаковое напоминание в admin bar и собственном профиле.
 Scope: расчёт и тексты в General, локализация затронутых строк, readme и UI/runtime regression.
 Out of Scope: изменение политики срока, расписания, логики входа или формата метаданных.
@@ -130,7 +130,7 @@ Notes/Risks: проверяется elapsed-time, а не календарное
 
 ### T4. Проверить и восстановить защиту от повторного cron-сброса
 
-Status: todo
+Status: review
 Goal: уже начатый сброс не инициируется снова каждым запуском cron.
 Scope: воспроизведение persisted `rp_inited` на реальном WP и минимальная коррекция чтения флага при подтверждении; Controller и регрессионные сценарии.
 Out of Scope: новый механизм retry, смена persisted metadata, изменения политики почтовых ошибок/срока.
@@ -151,6 +151,30 @@ DoD: G; перед реализацией решение записано и з�
 AC: MU загружается поддержанным loader, после готовности Carbon Fields получает нужные capabilities и историю; cron создаётся без страницы настроек; повторные запросы/параллельная инициализация не пересоздают историю и не дублируют cron; ordinary activation/deactivation сохраняются; network поведение точно соответствует решению; установка/удаление MU описаны.
 Dependencies: T1, T2, T4. Решение о сетевом охвате получено.
 Notes/Risks: пользователь подтвердил расширение текущей site-member выборки на все аккаунты сети, включая не привязанные к сайтам, и единственный cron на главном сайте. Настройки читаются из сетевого Carbon container; существующие значения не перезаписывать/не мигрировать молча. [WordPress не вызывает activation hooks для MU](https://developer.wordpress.org/advanced-administration/plugins/mu-plugins/). Одного переноса класса недостаточно; `muplugins_loaded` из комментария issue — кандидат для детекции, не готовый контракт для любого стороннего loader. Для завершения MU bootstrap нужен служебный маркер; новую пользовательскую metadata-схему или миграцию не вводить без отдельного решения.
+
+#### T5a. Единая сетевая политика и расписание
+
+Status: waiting_dependency
+Goal: сетевые настройки, выборка пользователей и cron имеют один и тот же охват.
+Scope: Settings/Carbon network getter и authorization; Controller network queries; Cron/Activation canonical main-site scheduling, cleanup legacy subsite events и capabilities; isolated network fixtures; обе readme.
+Out of Scope: MU one-time bootstrap (T5b), новые public hooks/CLI/форматы user-meta, массовые кнопки.
+DoR: T4 completed; network decision и технические границы записаны в evidence.
+DoD: G; ordinary single/network сценарии и права проверены на текущей PHP/WP matrix; scoped commit.
+AC: all-account queries включают unassigned; policy читается из network container без миграции; main site содержит ровно один twicedaily event, subsites — ноль; ensure/stop из subsite возвращают blog context; legacy subsite events удалены; subsite cron callback не повторяет network reset; network settings требуют manage_network_options; прежний custom cap сохранён для administrator roles, включая новые сайты.
+Dependencies: T1, T2, T4. Полный MU gate остаётся в T5b.
+Notes/Risks: периодическая политика не имеет исключения инициатора; это исключение относится только к кнопкам T9. Изменение cron scope явно разрешено пользователем.
+
+#### T5b. Идемпотентная MU-инициализация и переходы режимов
+
+Status: waiting_dependency
+Goal: supported MU loader запускает полный lifecycle после готовности Carbon без страницы настроек.
+Scope: Activation/bootstrap/internal service marker и lock, initialization/history/caps, lifecycle fixtures и инструкции установки/удаления в обеих readme.
+Out of Scope: автоматическая очистка после физического удаления MU-файлов, миграция пользовательских метаданных, новая password policy.
+DoR: T5a completed; использовать root MU loader, включая require main PHP из WP_PLUGIN_DIR, и canonical main-site options для service state.
+DoD: G; ordinary/MU/network lifecycle matrix и transitions пройдены; scoped commit; затем T5 completed.
+AC: bootstrap после Carbon readiness; история/права и cron созданы без activation hook; повторная загрузка и занятый lock не дублируют initialization; незавершённая initialization безопасно возобновляется; новые сайты получают нужные права; ordinary↔MU сохраняют историю и один scheduler; ordinary activation/deactivation по-прежнему работают; removal cleanup явно документирован.
+Dependencies: T5a.
+Notes/Risks: не считать add_site_option атомарным lock; не определять MU только по physical main-file path. Public lifecycle methods/hooks сохраняются; ошибки initialization не отмечаются completed.
 
 ### T6. Строковые значения констант (#8)
 

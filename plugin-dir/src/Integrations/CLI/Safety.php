@@ -14,6 +14,8 @@ class Safety extends WP_CLI_Command {
 	 */
 	public function check_users( $args, $assoc_args ) {
 		General::getLogger()->info( 'Checking users for password reset.' );
+		$resetUsers = [];
+		$preInitedUsers = [];
 		Controller::checkUsers( $resetUsers, $preInitedUsers );
 		// Log the results.
 		General::getLogger()->info( 'Users to reset: ' . implode( ', ', $resetUsers ) );
