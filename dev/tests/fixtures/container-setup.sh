@@ -20,17 +20,25 @@ wp config create --dbname=safety_passwords_integration --dbuser=root --dbpass=''
 wp config set DISABLE_WP_CRON true --raw --quiet
 
 # WP-CLI reads the generated value on stdin. It never appears in arguments or output.
-php -r 'echo bin2hex(random_bytes(24)), PHP_EOL;' |
+if ! php -r 'echo bin2hex(random_bytes(24)), PHP_EOL;' 2>/dev/null |
   wp core install --url=http://integration.invalid --title=Integration \
     --admin_user=integration-admin --admin_email=integration@example.invalid \
-    --skip-email --prompt=admin_password --quiet
+    --skip-email --prompt=admin_password --quiet >/dev/null 2>&1; then
+  echo 'WordPress installation failed.' >&2
+  exit 1
+fi
 
 wp option add safety_passwords_integration_target isolated --quiet
 wp plugin activate safety-passwords --quiet
+wp --user=integration-admin eval-file /test-fixtures/activation.php initial
+wp --user=integration-admin eval-file /test-fixtures/activation.php followup
 wp --user=integration-admin eval-file /test-fixtures/cron.php
 
 # Characterize current MU startup after ordinary plugin deactivation.
 wp plugin deactivate safety-passwords --quiet
 wp eval-file /test-fixtures/deactivation.php
+wp plugin activate safety-passwords --quiet
+wp plugin deactivate safety-passwords --quiet
+wp eval-file /test-fixtures/activation.php pending
 cp /test-fixtures/mu-loader.php wp-content/mu-plugins/10-safety-passwords-test-loader.php
 wp eval-file /test-fixtures/mu-characterization.php

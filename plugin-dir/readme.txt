@@ -52,6 +52,8 @@ For contributor testing, see the isolated WordPress integration check commands i
 1. Activate the plugin through the \'Plugins\' menu in WordPress
 2. Go to Safety Passwords settings page and configure the plugin.
 
+The plugin completes its initial password history and periodic reset setup on the next normal WordPress request after activation.
+
 
 == Changelog ==
 = 1.4.2 =

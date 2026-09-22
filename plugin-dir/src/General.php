@@ -38,8 +38,6 @@ class General {
 		defined( 'WP_CLI' ) && WP_CLI && WP_CLI::add_command( 'safety', Safety::class );
 
 		add_action( Cron::EVENT_NAME, [ Controller::class, 'findExpiringPasswords' ] );
-		add_action( 'itron/safety-passwords/activate', [ self::class, 'processSecondPhaseActivation' ] );
-		add_action( 'itron/safety-passwords/activate', [ Controller::class, 'putCurrentPasswordsToStopList' ], 20 );
 		add_action( 'admin_bar_menu', [ self::class, 'addAdminBarMenu' ], 60,1 );
 		add_action( 'personal_options', [ self::class, 'addUserProfileNotice' ], 20, 1 );
 		add_action( 'admin_enqueue_scripts', [ self::class, 'addAdminStyles' ] );
@@ -49,25 +47,20 @@ class General {
 		}, 5 );
 	}
 
-	public function processActivationHook(): void {
-		$role = get_role( 'administrator' );
-		$role->add_cap( Settings::MANAGE_CAPS, true );
-
-		do_action( 'itron/safety-passwords/capabilities/set' );
-
-		// Carbon fields can not be loaded during activation hook,
-		// and the plugin can not be properly activated during the activation hook
-		// because activation hook runs too late. See wp-admin/plugins.php:do_action( 'activate_' . $plugin );
-		// So, we just need to schedule the second phase of activation for the next normal request.
-		wp_schedule_single_event( time(), 'itron/safety-passwords/activate' );
-	}
-
 	public static function processSecondPhaseActivation(): void {
-		Cron::ensureEvent( true );
+		Activation::processSecondPhaseActivation();
 	}
 
 	public function processDeactivationHook(): void {
-		Cron::stopEvent();
+		Activation::processDeactivationHook();
+	}
+
+	public function grantCaps(): void {
+		Activation::grantCaps();
+	}
+
+	public function processActivationHook(): void {
+		Activation::processActivationHook();
 	}
 
 	public function addStreamConnector( array $connectors ): array {

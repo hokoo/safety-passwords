@@ -94,7 +94,7 @@ Tasking Guidance: использовать контракты decompose-work н�
 
 ### T1. Изолированные интеграционные проверки cron (#15)
 
-Status: review
+Status: completed
 Goal: получить повторяемую безопасную проверку реального WordPress.
 Scope: отдельный тестовый bootstrap/runner, fixtures, dev-конфигурация, отдельный CI workflow, readme. Рекомендация — небольшой интеграционный runner через уже используемый WP-CLI, без нового большого test framework.
 Out of Scope: production lifecycle-исправления, текущая dev-БД, release workflow.
@@ -106,7 +106,7 @@ Notes/Risks: текущий lifecycle-дефект будет покрыт regre
 
 ### T2. Завершить текущий перенос активации
 
-Status: waiting_dependency
+Status: review
 Goal: новая обычная активация снова полностью инициализирует плагин.
 Scope: `safety-passwords.php`, `src/Activation.php`, lifecycle-фрагменты `src/General.php`, связанные тесты; сохранить исходные пользовательские правки.
 Out of Scope: реализация MU lifecycle, смена публичных hooks/capability или интервала cron.
@@ -118,7 +118,7 @@ Notes/Risks: существующие public PHP-методы General прове
 
 ### T3. Корректное отображение срока смены пароля
 
-Status: waiting_dependency
+Status: todo
 Goal: понятное и одинаковое напоминание в admin bar и собственном профиле.
 Scope: расчёт и тексты в General, локализация затронутых строк, readme и UI/runtime regression.
 Out of Scope: изменение политики срока, расписания, логики входа или формата метаданных.
@@ -130,7 +130,7 @@ Notes/Risks: проверяется elapsed-time, а не календарное
 
 ### T4. Проверить и восстановить защиту от повторного cron-сброса
 
-Status: waiting_dependency
+Status: todo
 Goal: уже начатый сброс не инициируется снова каждым запуском cron.
 Scope: воспроизведение persisted `rp_inited` на реальном WP и минимальная коррекция чтения флага при подтверждении; Controller и регрессионные сценарии.
 Out of Scope: новый механизм retry, смена persisted metadata, изменения политики почтовых ошибок/срока.
@@ -154,7 +154,7 @@ Notes/Risks: пользователь подтвердил расширение 
 
 ### T6. Строковые значения констант (#8)
 
-Status: waiting_dependency
+Status: todo
 Goal: строковые значения из CI/CD эквивалентны типизированным и одинаково представлены в UI.
 Scope: нормализация известных настроек в Settings, места отображения и потребления, integration scenarios, обе readme.
 Out of Scope: переименование констант, новый alias MIN_LENGTH, новые допустимые диапазоны или универсальный parser произвольных env-строк.

@@ -21,18 +21,19 @@ define( __NAMESPACE__ . '\OPTIONS_MODE', is_multisite() ? 'network' : 'theme_opt
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-$general = new General();
-$general->init();
+( new General() )->init();
+Activation::init();
+
 add_action( 'in_plugin_update_message-' . PLUGIN_NAME, __NAMESPACE__ . '\upgradeMessage', 10, 2 );
 
 register_activation_hook(
 	PLUGIN_MAIN_FILE_PATH,
-	[ $general, 'processActivationHook' ]
+	[ Activation::class, 'processActivationHook' ]
 );
 
 register_deactivation_hook(
 	PLUGIN_MAIN_FILE_PATH,
-	[ $general, 'processDeactivationHook' ]
+	[ Activation::class, 'processDeactivationHook' ]
 );
 
 function upgradeMessage( $data, $response ) {

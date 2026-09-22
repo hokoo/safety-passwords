@@ -35,4 +35,4 @@ Run a target twice to confirm repeatability. The targets cover PHP 7.4 with Word
 
 The runner selects two `/24` subnets from `10.254.0.0/16` after inspecting existing Docker networks and local IPv4 routes and interfaces. It refuses to create a target if that inspection fails or fewer than two free subnets remain.
 
-The cron scenario checks plugin boot, one `twicedaily` event, repeat scheduling, removal, and the enabled and zero interval callback paths. It also prints a separate MU startup characterization; that observation does not establish a lifecycle fix. A remote CI result is available only after the workflow has run on GitHub.
+The cron scenario checks plugin boot, one `twicedaily` event, repeat scheduling, removal, and the enabled and zero interval callback paths. The activation scenario checks the deferred setup of the periodic event and initial password history on the next normal request. It also prints a separate MU startup characterization; that observation does not establish a lifecycle fix. A remote CI result is available only after the workflow has run on GitHub.
