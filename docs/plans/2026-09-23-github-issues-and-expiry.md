@@ -130,7 +130,7 @@ Notes/Risks: проверяется elapsed-time, а не календарное
 
 ### T4. Проверить и восстановить защиту от повторного cron-сброса
 
-Status: review
+Status: completed
 Goal: уже начатый сброс не инициируется снова каждым запуском cron.
 Scope: воспроизведение persisted `rp_inited` на реальном WP и минимальная коррекция чтения флага при подтверждении; Controller и регрессионные сценарии.
 Out of Scope: новый механизм retry, смена persisted metadata, изменения политики почтовых ошибок/срока.
@@ -142,7 +142,7 @@ Notes/Risks: ошибку доставки и повторную попытку 
 
 ### T5. MU lifecycle и его network-контракт (#7)
 
-Status: waiting_dependency
+Status: in_progress
 Goal: MU-установка работает без ручного посещения страницы настроек и обычного activation hook.
 Scope: сначала короткое решение о поддержанном loader/порядке загрузки, однократной инициализации и network scope; затем отдельный ограниченный implementation batch с тестами и документацией.
 Out of Scope: смена общей password policy, автоматическая очистка данных после физического удаления MU-файлов.
@@ -154,7 +154,7 @@ Notes/Risks: пользователь подтвердил расширение 
 
 #### T5a. Единая сетевая политика и расписание
 
-Status: waiting_dependency
+Status: review
 Goal: сетевые настройки, выборка пользователей и cron имеют один и тот же охват.
 Scope: Settings/Carbon network getter и authorization; Controller network queries; Cron/Activation canonical main-site scheduling, cleanup legacy subsite events и capabilities; isolated network fixtures; обе readme.
 Out of Scope: MU one-time bootstrap (T5b), новые public hooks/CLI/форматы user-meta, массовые кнопки.

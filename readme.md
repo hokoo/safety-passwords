@@ -26,6 +26,8 @@ The periodic check starts a mandatory reset and attempts one recovery email for 
 
 On WordPress 5.0 through 5.6, background reset requests use the core reset-key and mail APIs because the login-page recovery function is not loaded during cron or WP-CLI checks. Newer versions use the core recovery function directly.
 
+On multisite, Safety Passwords reads its settings from the network settings page. The periodic check and manual `wp safety check-users` cover every account in the network, including accounts that belong to no site. The periodic event runs only on the network's main site; scheduling or deactivating from a subsite also removes older duplicate events on subsites. Only network administrators with `manage_network_options` can open or save the network settings. The plugin continues to grant its settings capability to administrator roles on existing and newly created sites.
+
 ## Isolated WordPress integration checks
 
 Install only the plugin dependencies first, then run the same command used by CI:
@@ -41,4 +43,4 @@ Run a target twice to confirm repeatability. The targets cover PHP 7.4 with Word
 
 The runner selects two `/24` subnets from `10.254.0.0/16` after inspecting existing Docker networks and local IPv4 routes and interfaces. It refuses to create a target if that inspection fails or fewer than two free subnets remain.
 
-The cron scenario checks plugin boot, one `twicedaily` event, repeat scheduling, removal, and the enabled and zero interval callback paths. The activation scenario checks the deferred setup of the periodic event and initial password history on the next normal request. It also prints a separate MU startup characterization; that observation does not establish a lifecycle fix. A remote CI result is available only after the workflow has run on GitHub.
+The cron scenario checks plugin boot, one `twicedaily` event, repeat scheduling, removal, and the enabled and zero interval callback paths. The activation scenario checks the deferred setup of the periodic event and initial password history on the next normal request. The runner then converts its disposable installation to multisite and checks network settings, all-account coverage, site capabilities, authorization, main-site scheduling, duplicate cleanup, and deactivation. It also prints a separate MU startup characterization; that observation does not establish a lifecycle fix. A remote CI result is available only after the workflow has run on GitHub.

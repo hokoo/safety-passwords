@@ -69,6 +69,10 @@ class Settings {
 		$option_page->add_fields( $settings )
 		            ->set_icon( 'dashicons-superhero' )
 		            ->where( 'current_user_capability', 'IN', [ self::MANAGE_CAPS, 'manage_options' ] );
+		if ( is_multisite() ) {
+			// Carbon evaluates these conditions for both page attachment and saving.
+			$option_page->where( 'current_user_capability', '=', 'manage_network_options' );
+		}
 	}
 
 	private static function isOverloaded( $optionSlug ): bool {
@@ -89,6 +93,10 @@ class Settings {
 	public static function getOption( string $optionSlug ) {
 		if ( self::isOverloaded( $optionSlug ) ) {
 			return self::getOverloaded( $optionSlug );
+		}
+		if ( is_multisite() ) {
+			// Network settings may be updated from any site context; avoid stale site-local cache entries.
+			return carbon_get_the_network_option( self::$optionPrefix . $optionSlug );
 		}
 
 		// Carbon Fields does not have a built-in caching mechanism, lol.

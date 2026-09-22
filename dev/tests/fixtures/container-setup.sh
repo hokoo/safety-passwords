@@ -48,3 +48,12 @@ wp eval-file /test-fixtures/activation.php pending
 cp /test-fixtures/mu-loader.php wp-content/mu-plugins/10-safety-passwords-test-loader.php
 wp eval-file /test-fixtures/mu-characterization.php
 wp --user=integration-admin eval-file /test-fixtures/expiry-notices.php mu
+
+# Convert only this disposable installation after the ordinary and MU characterization phases.
+rm wp-content/mu-plugins/10-safety-passwords-test-loader.php
+wp core multisite-convert --subdomains=false --quiet
+wp site create --slug=subsite --title=Subsite --email=integration@example.invalid --quiet >/dev/null
+wp plugin activate safety-passwords --network --quiet
+wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-policy.php active
+wp plugin deactivate safety-passwords --network --quiet
+wp --url=http://integration.invalid eval-file /test-fixtures/network-policy.php inactive

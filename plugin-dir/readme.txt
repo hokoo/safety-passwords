@@ -29,6 +29,8 @@ After the period expires, the periodic check starts a mandatory reset and attemp
 
 Background reset emails and silent reset links also work on WordPress 5.0 through 5.6, where the login-page recovery function is unavailable during periodic checks.
 
+On multisite, settings are shared across the network and can be changed only by network administrators with `manage_network_options`. Periodic and manual checks include all network accounts, even those assigned to no site. A single periodic event is kept on the main site, and older subsite events are removed when scheduling or deactivating. Administrator roles on existing and new sites retain the plugin's settings capability.
+
 Your own profile shows a countdown before the period ends, and the admin bar adds a reminder during the final seven days. Once the period ends, they ask you to change your password without showing a countdown. If a password reset has already been initiated, they ask you to use the password recovery form. Setting the reset interval to 0 hides these reminders.
 
 The important feature of the plugin is settings defining by means of PHP constants.

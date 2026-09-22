@@ -10,13 +10,28 @@
 
 ## Active batch
 
+- T5a in_progress, worker `t5a_network_policy`; current product HEAD `4f73323`. Scope: whole-network policy, canonical main-site scheduler, capabilities and isolated multisite coverage. T5b follows its accepted boundary; T6 remains ready but awaits the single-writer sequence. T7/E1 QA and E2 implementation have not started.
+- Owner decisions complete: all network accounts, one main-site cron; two bulk modes later, excluding only initiator. No product question currently blocks execution.
+
+| Accepted task | Local commit | Decisive evidence |
+| --- | --- | --- |
+| T1 isolated runner/CI | `49073f2` | Six successful isolated runs: twice each PHP7.4/WP5.0, PHP7.4/WP6.8, PHP8.2/WP6.8. |
+| T2 original activation extraction | `9b99ad4` | Actual missing-callback red, then all three targets green; original user PHP edits integrated separately. |
+| T3 expiry UI | `fb9e265` | Actual negative-count red; boundary/overdue/pending/disabled/fallback/no-mutation tests green on all three targets. |
+| T4 repeat resets + compatibility | `4f73323` | Actual repeated-reset red; final three targets green including reset/profile/history/mail/CLI, without CLI warning. |
+| T8 bulk design | Plan/evidence | Both modes, network scope, initiator exclusion, bounded job and error contract recorded; implementation waits for E1 QA. |
+
+Original untracked AGENTS/.codex remain outside commits. Remote CI, push/merge/release and GitHub writes have not run. Detailed historical failures and repairs below are superseded by accepted checkpoints where explicitly recorded.
+
+## Initial batch (historical)
+
 - T1 `in_progress`: worker `t1_integration_harness` завершил начальный runner/Compose/fixtures/workflow/readme без product PHP изменений. Static checks: PHP/shell lint, Compose config quiet, отказ remote Docker target. Runtime пока не запускался.
 - Root review принял изоляцию по конфигурации, но обнаружил отсутствие надёжного failure propagation в CI lint (`find -exec`); отдельный свежий worker `t1_static_repair` исправляет только CI lint и краткую ссылку на тесты в plugin readme.
 - После freeze repair — test_monitor с serial matrix PHP7.4/WP5.0, PHP7.4/WP6.8, PHP8.2/WP6.8, по два последовательных запуска. Root runtime-команды не выполняет.
 - Независимый explorer `mu_bulk_decisions` завершил read-only уточнение T5/T8; исправленная область get_users проверена по локальному core, первоначальная гипотеза о глобальном охвате отвергнута.
 - T2 ожидает T1; отдельная цель — завершённый перенос lifecycle с сохранением совместимости и отдельным коммитом.
 
-## Gates and risks
+## Initial gates and risks (historical)
 
 - Начальный review подтверждает отсутствие вызова Activation::init; это known failing behavior для T2, не результат T1.
 - Для T5 остаются существенные вопросы network lifecycle; для T8 выбраны оба режима, остаются охват/сессии/частичные ошибки и состояние пакетной операции.
@@ -84,6 +99,12 @@
 - Это дизайн и task refinement корневого delivery owner, не реализация. T9 остаётся waiting_dependency на T7; новые продуктовые требования не добавлены.
 
 ## Root-authored changes
+
+- T5a runtime gate PASS: `bash dev/tests/run.sh php74-wp50`, `php74-wp68`, `php82-wp68` все exit0 на WP5.0/PHP7.4.33, WP6.8/PHP7.4.33, WP6.8/PHP8.2.33. Network getter/conflicting local values, unassigned/subsite accounts, existing/new-site caps, actual Carbon attach/save authorization, canonical cron/duplicate cleanup/subsite no-op/context/deactivation pass; прежние сценарии pass. Runtime warning/fatal отсутствуют, Docker resources очищены, status/diff-stat неизменны. Root принимает T5a для scoped commit; затем T5b MU bootstrap.
+
+- T5a static review принят: network getter/auth condition, all-account queries, main-site scheduler/subsite guard, network caps и real Carbon save fixtures. PHP lint пяти файлов, shell/diff checks pass. Frozen Activation `efb61057`, Controller `6b7432b8`, Cron `419f5201`, Settings `d6588ce4`, setup `3ff42e4e`, network fixture `7e7add47`. Worker завершён; serial three-target matrix проверяет ordinary + добавленный network lifecycle. MU marker/lock/transitions по-прежнему T5b; не считать #7 закрытой.
+
+- T4 доставлена локальным коммитом `4f73323` (`fix: make password reset checks reliable across runtimes`), T4 completed. T5/T5a in_progress: fresh worker реализует network policy/scheduler/caps с isolated fixtures; T5b MU bootstrap ждёт принятого T5a. Исходные AGENTS/.codex вне коммита.
 
 - T4 delivery gate PASS: `bash dev/tests/run.sh php74-wp50`, `php74-wp68`, `php82-wp68` все exit0 (WP5.0/PHP7.4.33; WP6.8/PHP7.4.33; WP6.8/PHP8.2.33), без прежних CLI warning/TypeError. Pass: first/repeat persisted reset, fresh eligible account, mail failure/success/silent valid key, real reset/profile cleanup/history/date, disabled callback и прежние lifecycle/UI/MU checks. Все runner resources удалены, status/hash boundary неизменны. Root принимает T4 для scoped commit; T5a разблокируется после commit.
 
