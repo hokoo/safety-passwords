@@ -20,6 +20,8 @@ Don't forget update your hosts file
 ## Development
 WP plugin directory `plugin-dir`.
 
+The expiry reminders in the admin bar and the user's own profile use the same elapsed-time calculation. They show a countdown before the deadline, a change-password notice once it is due, and a separate reset-required notice after a reset starts. A zero reset interval hides both reminders. Rendering these notices does not update user metadata or initiate a reset.
+
 ## Isolated WordPress integration checks
 
 Install only the plugin dependencies first, then run the same command used by CI:

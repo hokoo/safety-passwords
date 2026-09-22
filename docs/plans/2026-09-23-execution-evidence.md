@@ -61,6 +61,7 @@
 - T2 `review`: `t2_green_verification` выполняет php74-wp50, php74-wp68, php82-wp68 последовательно на исправленном frozen diff. До завершения runtime следующий writer не запускается.
 - T2 green gate: все три `bash dev/tests/run.sh <target>` (php74-wp50, php74-wp68, php82-wp68) exit 0. Реальные версии PHP7.4.33/WP5.0, PHP7.4.33/WP6.8, PHP8.2.33/WP6.8. Pass: capability, legacy method availability, deferred callbacks, history seed, один periodic event, стабильный следующий bootstrap, прежние cron/deactivation сценарии. Исходники неизменны во время проверки, test resources очищены runner.
 - Root принимает T2 для отдельного коммита. Сохранены существующие границы: при деактивации до второй фазы остаётся одноразовое deferred event (characterization исходного поведения), а MU пока не инициирует cron (T5). Это не заявляется исправленным и не подменяет будущий gate T5.
+- T2 доставлена отдельным коммитом `9b99ad4d83b0` (`fix: complete activation lifecycle extraction`). Первоначальные PHP-правки интегрированы; tracked worktree чистый, только исходные AGENTS/.codex untracked. T2 completed; начинается T3 actual-UI regression, затем correction.
 
 ## Owner decision: network scope
 
@@ -83,6 +84,20 @@
 - Это дизайн и task refinement корневого delivery owner, не реализация. T9 остаётся waiting_dependency на T7; новые продуктовые требования не добавлены.
 
 ## Root-authored changes
+
+- T3 green gate принят: `bash dev/tests/run.sh php74-wp50`, `php74-wp68`, `php82-wp68` последовательно exit 0 (WP5.0/PHP7.4.33; WP6.8/PHP7.4.33; WP6.8/PHP8.2.33). Обе UI-поверхности, ordinary/MU stale metadata, window/expiry ±1 second, месяцы просрочки, pending/disabled/fallback/profile scope и отсутствие UI mutations pass; lifecycle/cron regression pass. Runner cleanup выполнен, новых файлов/изменений runtime нет. Root принимает T3 для scoped commit; T4 — следующий batch.
+
+- T3 copy repair принят: notice направляет к форме восстановления без обещания письма, readme уточнён, PHP/PO/diff checks pass. Frozen General SHA `c2d549c2`, expiry fixture `edf96044`. `t3_green_runtime` выполняет три цели php74-wp50 → php74-wp68 → php82-wp68; следующий writer ждёт gate.
+
+- T3 product review: shared read-only calculation и границы срока приняты статически; worker lint обоих PHP/PO/diff-check pass. Перед runtime — свежий copy repair: reset-required notice не должен утверждать доставку письма (mail failure сохраняет флаг); уточнить readme, поскольку профиль показывает info countdown и до семидневного окна. POT standalone msgfmt имеет исходный некорректный placeholder header (подтверждён на HEAD), это не новый сбой русского каталога.
+
+- T4 refinement: локальный core `wp-includes/user.php` помечает hook `wp_update_user` как добавленный в WP6.3, а Controller использует его для profile cleanup. Required AC T4 на WP5.0 должен проверить настоящий profile update, не вручную вызвать отсутствующий core hook. При подтверждённом провале потребуется ограниченная compatibility repair в том же scope; reset/history policy не расширять.
+
+- T5 refinement после read-only mapping: разделить на T5a (единая network policy: чтение Carbon network options, all-account выборки, main-site scheduler/cleanup старых subsite events и network authorization) и T5b (идемпотентная ordinary/MU initialization после готовности Carbon, mode transitions, документация). Оба входят в исходные AC T5; выполнение после T4.
+- Для T5 служебные completion/lock хранить в options канонического сайта; уникальность `option_name` позволяет атомарный `add_option`, не считать `add_site_option` атомарным lock. Существующие user-meta форматы неизменны. Повторный bootstrap не добавляет историю повторно; незавершённый setup допускает безопасный повтор после истечения lease.
+- Capabilities T5: сохранить существующий custom cap для administrator roles сайтов; сетевые изменения дополнительно требуют `manage_network_options`. Пользователи без site membership включаются в политику/историю, но не получают административных прав. Loader — стандартный root MU loader, подключающий main PHP; bootstrap работы после Carbon readiness. Физическое удаление MU-файлов не может запустить cleanup и должно быть описано отдельно.
+
+- T3 red gate: `t3_red_runtime` выполнил один `bash dev/tests/run.sh php82-wp68` на HEAD `9b99ad4d83b0` + expiry fixture; WP6.8/PHP8.2.33, exit 1 по ожидаемой проверке `expiry UI months_overdue admin bar has negative days`. Предыдущие lifecycle/cron checks pass; runner удалил только собственные ресурсы, worktree не изменён. Root принимает воспроизведение; следующий batch — T3 UI correction и локализация.
 
 - Только delivery bookkeeping: разрешение исполнения/статус T1 в плане и данный checkpoint; исходники/тесты/процедуры делегированы worker.
 - Локальная ветка создана после sandbox escalation; автоматическая проверка разрешила действие. Удалённых действий не было.

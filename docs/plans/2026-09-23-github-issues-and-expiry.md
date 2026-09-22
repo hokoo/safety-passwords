@@ -106,7 +106,7 @@ Notes/Risks: текущий lifecycle-дефект будет покрыт regre
 
 ### T2. Завершить текущий перенос активации
 
-Status: review
+Status: completed
 Goal: новая обычная активация снова полностью инициализирует плагин.
 Scope: `safety-passwords.php`, `src/Activation.php`, lifecycle-фрагменты `src/General.php`, связанные тесты; сохранить исходные пользовательские правки.
 Out of Scope: реализация MU lifecycle, смена публичных hooks/capability или интервала cron.
@@ -118,7 +118,7 @@ Notes/Risks: существующие public PHP-методы General прове
 
 ### T3. Корректное отображение срока смены пароля
 
-Status: todo
+Status: review
 Goal: понятное и одинаковое напоминание в admin bar и собственном профиле.
 Scope: расчёт и тексты в General, локализация затронутых строк, readme и UI/runtime regression.
 Out of Scope: изменение политики срока, расписания, логики входа или формата метаданных.

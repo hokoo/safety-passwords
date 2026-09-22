@@ -94,19 +94,27 @@ msgstr ""
 "инструкциям в отправленном вам электронном письме."
 
 #. translators: %s: days
-#: src/General.php:112
+#: src/General.php:132
 #, php-format
 msgid "Change password in %s days"
 msgstr "Смените пароль не позднее %s д."
 
+#: src/General.php:126 src/General.php:159
+msgid "Password reset is required. Use the password recovery form."
+msgstr "Требуется сбросить пароль. Воспользуйтесь формой восстановления пароля."
+
+#: src/General.php:128 src/General.php:162
+msgid "Password change is due. Change your password."
+msgstr "Срок смены пароля наступил. Смените пароль."
+
 #. translators: %s: days
-#: src/General.php:135
+#: src/General.php:167
 #, php-format
 msgid "Next password change in %s days."
 msgstr "Смена пароля через %s дн."
 
 #. translators: %s: days
-#: src/General.php:142
+#: src/General.php:174
 #, php-format
 msgid "Please, change your password in %s days."
 msgstr "Пожалуйста, смените пароль в течение %s дн."

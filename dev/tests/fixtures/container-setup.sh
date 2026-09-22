@@ -33,6 +33,7 @@ wp plugin activate safety-passwords --quiet
 wp --user=integration-admin eval-file /test-fixtures/activation.php initial
 wp --user=integration-admin eval-file /test-fixtures/activation.php followup
 wp --user=integration-admin eval-file /test-fixtures/cron.php
+wp --user=integration-admin eval-file /test-fixtures/expiry-notices.php ordinary
 
 # Characterize current MU startup after ordinary plugin deactivation.
 wp plugin deactivate safety-passwords --quiet
@@ -42,3 +43,4 @@ wp plugin deactivate safety-passwords --quiet
 wp eval-file /test-fixtures/activation.php pending
 cp /test-fixtures/mu-loader.php wp-content/mu-plugins/10-safety-passwords-test-loader.php
 wp eval-file /test-fixtures/mu-characterization.php
+wp --user=integration-admin eval-file /test-fixtures/expiry-notices.php mu
