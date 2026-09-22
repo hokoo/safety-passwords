@@ -37,6 +37,8 @@ Integrations with other plugins:
 
 Plugin development is on the [GitHub](https://github.com/hokoo/safety-passwords).
 
+For contributor testing, see the isolated WordPress integration check commands in the repository's `readme.md`. They cover cron behavior across the documented PHP and WordPress test targets.
+
 == Screenshots ==
 1. Settings page
 2. Setting are overridden by PHP constants

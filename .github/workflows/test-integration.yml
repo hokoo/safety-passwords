@@ -1,0 +1,40 @@
+name: WordPress integration
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cron:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: php74-wp50
+            php: '7.4'
+          - target: php74-wp68
+            php: '7.4'
+          - target: php82-wp68
+            php: '8.2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Install plugin dependencies without root project scripts
+        working-directory: plugin-dir
+        run: composer install --no-interaction --no-progress --no-scripts --prefer-dist
+      - name: Lint plugin and test PHP
+        shell: bash
+        run: |
+          find plugin-dir -path plugin-dir/vendor -prune -o -name '*.php' -print0 | xargs -0 -r -n 1 php -l
+          find dev/tests/fixtures -name '*.php' -print0 | xargs -0 -r -n 1 php -l
+          bash -n dev/tests/run.sh dev/tests/fixtures/container-setup.sh
+      - name: Isolated WordPress integration
+        run: bash dev/tests/run.sh "${{ matrix.target }}"
