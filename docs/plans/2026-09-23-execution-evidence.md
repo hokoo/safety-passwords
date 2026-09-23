@@ -2,6 +2,7 @@
 
 ## Authority and revision boundary
 
+- Для текущего поручения итоговый отчёт объединяет результаты прерванной и продолжающей её работы, без упоминания восстановления. Это уточнение относится только к этому продолжению, не задаёт правило отчётности для будущих сессий.
 - 2026-09-23: пользователь разрешил исполнение плана и принятие исходного PHP diff как отдельной задачи T2.
 - План: `2026-09-23-github-issues-and-expiry.md`; база `b02062431f91`; рабочая ветка `delivery/issues-lifecycle-expiry`.
 - Поставка: проверенные локальные scoped commits; без push/merge/GitHub writes/release.
@@ -10,7 +11,7 @@
 
 ## Active batch
 
-- T5a in_progress, worker `t5a_network_policy`; current product HEAD `4f73323`. Scope: whole-network policy, canonical main-site scheduler, capabilities and isolated multisite coverage. T5b follows its accepted boundary; T6 remains ready but awaits the single-writer sequence. T7/E1 QA and E2 implementation have not started.
+- T5b review: final three-target runtime gate passed; current HEAD `0a784e3` plus accepted MU diff awaiting scoped commit. T6 implementation statically reviewed in a separate checkout, awaiting integration and runtime. T7/E1 QA and E2 implementation have not started.
 - Owner decisions complete: all network accounts, one main-site cron; two bulk modes later, excluding only initiator. No product question currently blocks execution.
 
 | Accepted task | Local commit | Decisive evidence |
@@ -19,6 +20,7 @@
 | T2 original activation extraction | `9b99ad4` | Actual missing-callback red, then all three targets green; original user PHP edits integrated separately. |
 | T3 expiry UI | `fb9e265` | Actual negative-count red; boundary/overdue/pending/disabled/fallback/no-mutation tests green on all three targets. |
 | T4 repeat resets + compatibility | `4f73323` | Actual repeated-reset red; final three targets green including reset/profile/history/mail/CLI, without CLI warning. |
+| T5a network policy/scheduler | `0a784e3` | All three targets green including real network Carbon authorization, unassigned accounts, caps, single main-site cron and deactivation. |
 | T8 bulk design | Plan/evidence | Both modes, network scope, initiator exclusion, bounded job and error contract recorded; implementation waits for E1 QA. |
 
 Original untracked AGENTS/.codex remain outside commits. Remote CI, push/merge/release and GitHub writes have not run. Detailed historical failures and repairs below are superseded by accepted checkpoints where explicitly recorded.
@@ -100,6 +102,24 @@ Original untracked AGENTS/.codex remain outside commits. Remote CI, push/merge/r
 
 ## Root-authored changes
 
+- T5b final gate PASS: `bash dev/tests/run.sh php74-wp50`, `php74-wp68`, `php82-wp68` все exit0 (38/45/36s), WP5.0/PHP7.4.33, WP6.8/PHP7.4.33, WP6.8/PHP8.2.33. Ordinary/deferred/deactivation, MU held/expired lock, failed-history retry, repeats, manual-removal cleanup, mode transitions, network coexistence/history/caps/main cron и прежние scenarios pass. Runtime warnings отсутствуют; runner resources очищены, status/hash boundary неизменны, generated files отсутствуют. Root принимает T5b для scoped commit, затем интеграция T6 из отдельного checkout.
+
+- T5b fixture repair: после физического удаления loader fixture явно доказывает, что прежний cron остался, затем выполняет описанный `wp cron event delete` перед обычной активацией и перед multisite conversion. Исходные deferred/history/one-scheduler assertions сохранены; product не менялся. PHP/shell/diff checks pass. Frozen setup `ed09aa9b`, MU fixture `780a3fff`; повторная matrix проверит полный набор.
+
+- T5b first runtime: `bash dev/tests/run.sh php74-wp50`, WP5.0/PHP7.4.33, exit1 (~38s), first failure `ordinary reactivation scheduled periodic event early`. Ordinary initial/deferred и MU held-lock/failed-history/retry/repeat scenarios до этого прошли. Следующие две цели не запускались; runner cleanup выполнен, source/status неизменны. Требуется bounded investigation/repair перехода MU→ordinary, без ослабления lifecycle AC; затем новая matrix.
+
+- T5b runtime preflight не пройден: Docker Desktop WSL mount и local socket отсутствуют, пригодного endpoint нет. Ни одна команда матрицы не стартовала; source hashes и status неизменны, runtime verdict отсутствует. Запрошено включение Docker на хосте. Gate не принят; frozen T5b сохраняется, независимая T6 может готовиться в отдельном checkout до восстановления среды. Это не исключение из AC и не разрешение считать проверки выполненными.
+
+- T5b detection repair принят статически: root MU loader определяется по include stack и списку `wp_get_mu_plugins`, stack без аргументов; ordinary network загрузка сохраняет deferred phase. Добавлен network MU + ordinary-registration coexistence regression. Writer остановлен; PHP/shell lint и diff-check pass. Frozen Activation `f73f98e4`, network MU fixture `b7dd464d`, setup `b56977f2`. Следующий gate — три runtime цели последовательно, включая held/expired lock, failed-seed retry, mode transitions и network bootstrap.
+
+- T5b static review: atomic claim/CAS, history readback on failed seed, lightweight completed path и removal procedure рассмотрены. Выявлен обязательный repair до runtime: `!did_action('muplugins_loaded')` также истинно при обычной network-plugin загрузке (core загружает network plugins до этого hook), поэтому текущий MU detection нарушает ordinary deferred contract. Fresh worker должен различать реальный root MU loader и regular network load, сохраняя loader из WP_PLUGIN_DIR; существующие network initial assertions не ослаблять.
+
+- T5b upgrade boundary: automatic bootstrap применяется к MU; обычный deferred activation contract сохраняется. Автоматический repair для уже активной ordinary установки без activation hook не добавляется (не был обязательным AC). Для ordinary/network обновления обе readme должны описать однократную повторную активацию, чтобы заполнить полную сетевую историю/права и перенести scheduler; одно посещение settings не заменяет history seed. MU не требует ручной активации. Это операционная граница поставки, не выполненное обновление внешнего сайта.
+
+- T5b/T8 lock refinement: root проверил реализацию add_option и исправил прежнее предположение об атомарности до реализации worker. Canonical options остаются storage; claim использует INSERT IGNORE, stale takeover/release — exact-value CAS. Проверять владение перед completion; старый владелец не снимает чужую lease. Это внутренний concurrency mechanism, без изменения password/auth policy или публичных API. T5b worker подтвердил исправленный контракт; применить его и к T9 jobs.
+
+- T5a доставлена локальным коммитом `0a784e3`; T5a completed, T5b in_progress. MU bootstrap остаётся обязательной частью T5/#7, E1 ещё не принят.
+
 - T5a runtime gate PASS: `bash dev/tests/run.sh php74-wp50`, `php74-wp68`, `php82-wp68` все exit0 на WP5.0/PHP7.4.33, WP6.8/PHP7.4.33, WP6.8/PHP8.2.33. Network getter/conflicting local values, unassigned/subsite accounts, existing/new-site caps, actual Carbon attach/save authorization, canonical cron/duplicate cleanup/subsite no-op/context/deactivation pass; прежние сценарии pass. Runtime warning/fatal отсутствуют, Docker resources очищены, status/diff-stat неизменны. Root принимает T5a для scoped commit; затем T5b MU bootstrap.
 
 - T5a static review принят: network getter/auth condition, all-account queries, main-site scheduler/subsite guard, network caps и real Carbon save fixtures. PHP lint пяти файлов, shell/diff checks pass. Frozen Activation `efb61057`, Controller `6b7432b8`, Cron `419f5201`, Settings `d6588ce4`, setup `3ff42e4e`, network fixture `7e7add47`. Worker завершён; serial three-target matrix проверяет ordinary + добавленный network lifecycle. MU marker/lock/transitions по-прежнему T5b; не считать #7 закрытой.
@@ -141,7 +161,7 @@ Original untracked AGENTS/.codex remain outside commits. Remote CI, push/merge/r
 - T4 refinement: локальный core `wp-includes/user.php` помечает hook `wp_update_user` как добавленный в WP6.3, а Controller использует его для profile cleanup. Required AC T4 на WP5.0 должен проверить настоящий profile update, не вручную вызвать отсутствующий core hook. При подтверждённом провале потребуется ограниченная compatibility repair в том же scope; reset/history policy не расширять.
 
 - T5 refinement после read-only mapping: разделить на T5a (единая network policy: чтение Carbon network options, all-account выборки, main-site scheduler/cleanup старых subsite events и network authorization) и T5b (идемпотентная ordinary/MU initialization после готовности Carbon, mode transitions, документация). Оба входят в исходные AC T5; выполнение после T4.
-- Для T5 служебные completion/lock хранить в options канонического сайта; уникальность `option_name` позволяет атомарный `add_option`, не считать `add_site_option` атомарным lock. Существующие user-meta форматы неизменны. Повторный bootstrap не добавляет историю повторно; незавершённый setup допускает безопасный повтор после истечения lease.
+- Для T5 служебные completion/lock хранить в options канонического сайта. **Уточнение после source review:** ни `add_site_option`, ни `add_option` не являются достаточным atomic claim: локальный core option.php:1006 использует upsert при add_option. Для private lock — prepared WPDB INSERT IGNORE/affected-row и owner/value CAS для takeover/release, с согласованным cache handling. Существующие user-meta форматы неизменны; незавершённый setup допускает безопасный повтор после истечения lease.
 - T5 loader boundary: существующий fixture `mu-loader.php` из корня mu-plugins подключает main PHP из `WP_PLUGIN_DIR`; поддержанная детекция не может опираться только на физическое расположение main PHP внутри WPMU_PLUGIN_DIR. Carbon getter: `carbon_get_the_network_option($name)` либо `carbon_get_network_option($network_id, $name)` (проверены сигнатуры установленной зависимости). Network container сам по себе наследует manage_options, поэтому дополнительная network capability должна проверяться явно.
 - Capabilities T5: сохранить существующий custom cap для administrator roles сайтов; сетевые изменения дополнительно требуют `manage_network_options`. Пользователи без site membership включаются в политику/историю, но не получают административных прав. Loader — стандартный root MU loader, подключающий main PHP; bootstrap работы после Carbon readiness. Физическое удаление MU-файлов не может запустить cleanup и должно быть описано отдельно.
 

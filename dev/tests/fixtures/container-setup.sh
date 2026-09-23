@@ -39,21 +39,48 @@ wp --user=integration-admin eval-file /test-fixtures/cron-reset-lifecycle.php se
 wp --user=integration-admin eval-file /test-fixtures/cron-reset-lifecycle.php cleanup
 wp safety check-users
 
-# Characterize current MU startup after ordinary plugin deactivation.
+# Check interrupted MU startup and ordinary-to-MU transition.
 wp plugin deactivate safety-passwords --quiet
 wp eval-file /test-fixtures/deactivation.php
 wp plugin activate safety-passwords --quiet
 wp plugin deactivate safety-passwords --quiet
 wp eval-file /test-fixtures/activation.php pending
+wp eval-file /test-fixtures/mu-lifecycle.php prepare
 cp /test-fixtures/mu-loader.php wp-content/mu-plugins/10-safety-passwords-test-loader.php
-wp eval-file /test-fixtures/mu-characterization.php
+wp eval-file /test-fixtures/mu-lifecycle.php held
+cp /test-fixtures/mu-history-blocker.php wp-content/mu-plugins/05-safety-passwords-test-history-blocker.php
+wp eval-file /test-fixtures/mu-lifecycle.php failed
+rm wp-content/mu-plugins/05-safety-passwords-test-history-blocker.php
+wp eval-file /test-fixtures/mu-lifecycle.php initial
+wp eval-file /test-fixtures/mu-lifecycle.php repeat
 wp --user=integration-admin eval-file /test-fixtures/expiry-notices.php mu
 
-# Convert only this disposable installation after the ordinary and MU characterization phases.
+# An ordinary activation still uses its deferred phase after MU removal.
 rm wp-content/mu-plugins/10-safety-passwords-test-loader.php
+wp eval-file /test-fixtures/mu-lifecycle.php removed
+wp cron event delete safety_passwords_periodically_reset --url=http://integration.invalid --quiet
+wp eval-file /test-fixtures/mu-lifecycle.php prepare-ordinary
+wp plugin activate safety-passwords --quiet
+wp --user=integration-admin eval-file /test-fixtures/activation.php transition
+wp plugin deactivate safety-passwords --quiet
+wp eval-file /test-fixtures/mu-lifecycle.php prepare-return
+cp /test-fixtures/mu-loader.php wp-content/mu-plugins/10-safety-passwords-test-loader.php
+wp eval-file /test-fixtures/mu-lifecycle.php return
+wp eval-file /test-fixtures/mu-lifecycle.php return-repeat
+
+# Convert only this disposable installation after the single-site lifecycle phases.
+rm wp-content/mu-plugins/10-safety-passwords-test-loader.php
+wp eval-file /test-fixtures/mu-lifecycle.php removed
+wp cron event delete safety_passwords_periodically_reset --url=http://integration.invalid --quiet
 wp core multisite-convert --subdomains=false --quiet
 wp site create --slug=subsite --title=Subsite --email=integration@example.invalid --quiet >/dev/null
 wp plugin activate safety-passwords --network --quiet
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-policy.php active
 wp plugin deactivate safety-passwords --network --quiet
 wp --url=http://integration.invalid eval-file /test-fixtures/network-policy.php inactive
+wp --url=http://integration.invalid eval-file /test-fixtures/network-mu-lifecycle.php prepare
+wp plugin activate safety-passwords --network --quiet
+wp --url=http://integration.invalid eval-file /test-fixtures/network-mu-lifecycle.php ordinary-pending
+cp /test-fixtures/mu-loader.php wp-content/mu-plugins/10-safety-passwords-test-loader.php
+wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-mu-lifecycle.php initial
+wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-mu-lifecycle.php repeat

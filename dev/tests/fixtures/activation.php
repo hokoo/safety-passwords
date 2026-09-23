@@ -31,9 +31,8 @@ $stage = $args[0] ?? 'initial';
 
 if ( $stage === 'pending' ) {
 	sp_activation_assert( sp_activation_event_count( 'safety_passwords_periodically_reset' ) === 0, 'deactivation before second phase retained periodic event' );
-	echo sp_activation_event_count( $deferred_hook ) > 0
-		? "CHARACTERIZATION: deactivation before second phase retained deferred event\n"
-		: "CHARACTERIZATION: deactivation before second phase removed deferred event\n";
+	sp_activation_assert( sp_activation_event_count( $deferred_hook ) === 0, 'deactivation retained deferred event' );
+	echo "PASS: deactivation before second phase removed deferred event\n";
 	return;
 }
 
@@ -41,6 +40,25 @@ sp_activation_assert( class_exists( Activation::class ) && class_exists( Control
 $user_id = get_current_user_id();
 sp_activation_assert( $user_id > 0, 'synthetic test user not loaded' );
 $history = get_user_meta( $user_id, Controller::USER_STOP_LIST_META_KEY, true );
+
+if ( $stage === 'transition' ) {
+	$inactive_account = get_option( 'safety_passwords_integration_ordinary_transition' );
+	sp_activation_assert( is_array( $inactive_account ) && isset( $inactive_account['id'] ), 'inactive account state missing' );
+	sp_activation_assert( ! get_user_meta( (int) $inactive_account['id'], Controller::USER_STOP_LIST_META_KEY, true ), 'inactive account was seeded before deferred phase' );
+	sp_activation_assert( sp_activation_event_count( $deferred_hook ) === 1, 'ordinary reactivation did not defer initialization' );
+	sp_activation_assert( sp_activation_event_count( Cron::EVENT_NAME ) === 0, 'ordinary reactivation scheduled periodic event early' );
+	sp_activation_assert( ! get_option( 'safety_passwords_mu_initialized' ), 'ordinary reactivation retained MU completion marker' );
+	$before = is_array( $history ) ? count( $history ) : 0;
+	do_action( $deferred_hook );
+	wp_clear_scheduled_hook( $deferred_hook );
+	$after = get_user_meta( $user_id, Controller::USER_STOP_LIST_META_KEY, true );
+	sp_activation_assert( is_array( $after ) && count( $after ) === $before, 'ordinary reactivation duplicated history' );
+	$inactive_history = get_user_meta( (int) $inactive_account['id'], Controller::USER_STOP_LIST_META_KEY, true );
+	sp_activation_assert( is_array( $inactive_history ) && count( $inactive_history ) === 1, 'ordinary reactivation omitted inactive account' );
+	sp_activation_assert( sp_activation_event_count( Cron::EVENT_NAME ) === 1, 'ordinary reactivation did not create one event' );
+	echo "PASS: ordinary reactivation after MU retained history and deferred scheduler\n";
+	return;
+}
 
 if ( $stage === 'followup' ) {
 	$expected = get_option( 'safety_passwords_integration_activation_state' );

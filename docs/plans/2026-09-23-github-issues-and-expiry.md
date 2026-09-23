@@ -154,7 +154,7 @@ Notes/Risks: пользователь подтвердил расширение 
 
 #### T5a. Единая сетевая политика и расписание
 
-Status: review
+Status: completed
 Goal: сетевые настройки, выборка пользователей и cron имеют один и тот же охват.
 Scope: Settings/Carbon network getter и authorization; Controller network queries; Cron/Activation canonical main-site scheduling, cleanup legacy subsite events и capabilities; isolated network fixtures; обе readme.
 Out of Scope: MU one-time bootstrap (T5b), новые public hooks/CLI/форматы user-meta, массовые кнопки.
@@ -166,7 +166,7 @@ Notes/Risks: периодическая политика не имеет иск�
 
 #### T5b. Идемпотентная MU-инициализация и переходы режимов
 
-Status: waiting_dependency
+Status: in_progress
 Goal: supported MU loader запускает полный lifecycle после готовности Carbon без страницы настроек.
 Scope: Activation/bootstrap/internal service marker и lock, initialization/history/caps, lifecycle fixtures и инструкции установки/удаления в обеих readme.
 Out of Scope: автоматическая очистка после физического удаления MU-файлов, миграция пользовательских метаданных, новая password policy.

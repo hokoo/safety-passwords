@@ -414,7 +414,12 @@ class Controller {
 	}
 
 	private static function addToStopList( $password, WP_User $user, bool $isHash = false ): void {
-		if ( self::isPasswordInStopList( $password, $user ) ) {
+		if ( $isHash ) {
+			$existing = get_user_meta( $user->ID, self::USER_STOP_LIST_META_KEY, true );
+			if ( is_array( $existing ) && in_array( $password, $existing, true ) ) {
+				return;
+			}
+		} elseif ( self::isPasswordInStopList( $password, $user ) ) {
 			return;
 		}
 

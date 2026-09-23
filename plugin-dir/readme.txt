@@ -62,6 +62,12 @@ For contributor testing, see the isolated WordPress integration check commands i
 
 The plugin completes its initial password history and periodic reset setup on the next normal WordPress request after activation.
 
+When upgrading an existing ordinary installation to this network-wide policy, reactivate the plugin once so the deferred phase seeds history for all network accounts, refreshes site capabilities, and establishes the main-site schedule. Visiting settings alone only checks the schedule. An MU installation initializes automatically on its first request.
+
+For a must-use installation, keep the plugin directory in `/wp-content/plugins/safety-passwords/` and create a PHP loader directly in `/wp-content/mu-plugins/` that requires `/wp-content/plugins/safety-passwords/safety-passwords.php`. WordPress loads that root loader automatically; no Plugins-menu activation or settings-page visit is needed. After Carbon Fields is ready on the first request, the plugin seeds current password history, grants administrator capabilities, and schedules the periodic check. On multisite, it includes every network account and keeps one event on the main site. Later requests preserve the history and schedule. New sites receive the capability when created.
+
+To remove a must-use installation, remove the loader and then deactivate any ordinary copy if it is active. Deactivation clears scheduled events; simply deleting the MU loader cannot run a WordPress deactivation callback, so clear the `safety_passwords_periodically_reset` scheduled event on the main site (and any legacy subsite events) as part of removal. Removing the loader does not erase password history or settings. Before reinstalling a physically removed MU loader, delete the private `safety_passwords_mu_initialized` option on the main site so accounts added during its absence are included on the next request.
+
 
 == Changelog ==
 = 1.4.2 =
