@@ -1,6 +1,8 @@
 # Safety Passwords 1.4.3 local release candidate
 
-This candidate branches from accepted E1 commit `80c1a69213f838aa23197cba71e30a02e275301d`. It adds only the WordPress 7.1.2/PHP 8.5 and 8.2 platform adaptation from `dfe9073818cdb83f005df7cd1f06dbef725edc91`, the coherent 1.4.3 plugin version/Stable tag, and release documentation. It has not been tagged, merged, pushed, published, or deployed.
+This candidate branches from accepted E1 commit `80c1a69213f838aa23197cba71e30a02e275301d`. It adds only the WordPress 7.1.2/PHP 8.5 and 8.2 platform adaptation from `dfe9073818cdb83f005df7cd1f06dbef725edc91`, the coherent 1.4.3 plugin version/Stable tag, and release documentation. The verified local candidate is `257234d`; no external delivery action had occurred at that checkpoint.
+
+The owner subsequently requested a pull request. This authorizes pushing `release/1.4.3-ready` and opening a PR against `master`; merge, tagging, release publication and deployment remain separate. PR preparation changes delivery bookkeeping only, so the product and test files retain the verified `257234d` boundary. The deferred E2 branch remains local and outside the PR.
 
 | Scope | Accepted local evidence |
 | --- | --- |
