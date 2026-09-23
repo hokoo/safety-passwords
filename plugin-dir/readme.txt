@@ -33,11 +33,15 @@ On multisite, settings are shared across the network and can be changed only by 
 
 Your own profile shows a countdown before the period ends, and the admin bar adds a reminder during the final seven days. Once the period ends, they ask you to change your password without showing a countdown. If a password reset has already been initiated, they ask you to use the password recovery form. Setting the reset interval to 0 hides these reminders.
 
-The important feature of the plugin is settings defining by means of PHP constants.
+PHP constants override saved settings and show their effective values on the settings page:
 
- * <code>SAFETY_PASSWORDS_MIN_LENGTH</code> - (int/string, number of symbols) the minimum length of the password;
- * <code>SAFETY_PASSWORDS_RESET_INTERVAL</code> - (int/string, days) the period of time after which the user will be forced to change his password;
- * <code>SAFETY_PASSWORDS_RP_ON_REGISTRATION</code> - (bool) whether enforce users to change their password after registration or not.
+| Constant | Supported values | Effect |
+| --- | --- | --- |
+| <code>SAFETY_PASSWORDS_MIN_LEN</code> | Integer or whole-number string; settings field accepts 1-24 | Minimum password length. |
+| <code>SAFETY_PASSWORDS_RESET_INTERVAL</code> | Integer or whole-number string; settings field accepts 0-999 | Days between required resets; 0 disables periodic resets and reminders. |
+| <code>SAFETY_PASSWORDS_RP_ON_REGISTRATION</code> | true, 'true', 1, '1'; false, 'false', 0, '0' | Enables or disables a reset after registration. |
+
+The plugin interprets the registration constant with WordPress's <code>wp_validate_boolean()</code>. Other strings, such as 'off' or 'no', evaluate to true. The numeric constants normalize whole-number strings without changing the existing settings ranges; decimal strings are not converted to integers.
 
 Integrations with other plugins:
 

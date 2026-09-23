@@ -20,6 +20,16 @@ Don't forget update your hosts file
 ## Development
 WP plugin directory `plugin-dir`.
 
+The three supported PHP constants override saved settings and show their effective values on the settings page:
+
+| Constant | Supported values | Effect |
+| --- | --- | --- |
+| `SAFETY_PASSWORDS_RP_ON_REGISTRATION` | `true`, `'true'`, `1`, `'1'`; `false`, `'false'`, `0`, `'0'` | Enables or disables a reset after registration using WordPress `wp_validate_boolean()` semantics. Strings such as `'off'` and `'no'` evaluate to true. |
+| `SAFETY_PASSWORDS_MIN_LEN` | Integer or whole-number string; settings field accepts 1–24 | Minimum password length. Decimal strings are not converted to integers. |
+| `SAFETY_PASSWORDS_RESET_INTERVAL` | Integer or whole-number string; settings field accepts 0–999 | Days between required resets; 0 disables periodic resets and reminders. |
+
+The constants retain priority over stored Carbon Fields options. Numeric string normalization does not add range validation beyond the existing settings fields.
+
 The expiry reminders in the admin bar and the user's own profile use the same elapsed-time calculation. They show a countdown before the deadline, a change-password notice once it is due, and a separate reset-required notice after a reset starts. A zero reset interval hides both reminders. Rendering these notices does not update user metadata or initiate a reset.
 
 The periodic check starts a mandatory reset and attempts one recovery email for an expired account. Later checks leave that reset pending, including after a failed email attempt. A successful reset or profile password change clears the pending state and renews the expiry date. This profile cleanup also applies on supported WordPress versions before 6.3.
@@ -49,4 +59,4 @@ Run a target twice to confirm repeatability. The targets cover PHP 7.4 with Word
 
 The runner selects two `/24` subnets from `10.254.0.0/16` after inspecting existing Docker networks and local IPv4 routes and interfaces. It refuses to create a target if that inspection fails or fewer than two free subnets remain.
 
-The cron scenario checks plugin boot, one `twicedaily` event, repeat scheduling, removal, and the enabled and zero interval callback paths. The activation scenario checks the deferred setup of the periodic event and initial password history on the next normal request. The MU scenarios check held and expired startup locks, repeat requests, ordinary/MU transitions, and network bootstrap for unassigned and subsite accounts. The runner then converts its disposable installation to multisite and checks network settings, all-account coverage, site capabilities, authorization, main-site scheduling, duplicate cleanup, and deactivation. A remote CI result is available only after the workflow has run on GitHub.
+The cron scenario checks plugin boot, one `twicedaily` event, repeat scheduling, removal, and the enabled and zero interval callback paths. The activation scenario checks the deferred setup of the periodic event and initial password history on the next normal request. Nine separate WordPress bootstraps check boolean and numeric constants against registration flags, reset minimum length, cron reminders, conflicting saved options, and settings display. The MU scenarios check held and expired startup locks, repeat requests, ordinary/MU transitions, and network bootstrap for unassigned and subsite accounts. The runner then converts its disposable installation to multisite and checks network settings, all-account coverage, site capabilities, authorization, main-site scheduling, duplicate cleanup, and deactivation. A remote CI result is available only after the workflow has run on GitHub.

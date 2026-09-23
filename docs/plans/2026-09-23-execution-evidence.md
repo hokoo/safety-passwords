@@ -11,7 +11,7 @@
 
 ## Active batch
 
-- T5b review: final three-target runtime gate passed; current HEAD `0a784e3` plus accepted MU diff awaiting scoped commit. T6 implementation statically reviewed in a separate checkout, awaiting integration and runtime. T7/E1 QA and E2 implementation have not started.
+- T5/T5b completed in `b43ced0`. T6 review: final frozen diff passed all three version targets; scoped commit next. T7 Stream/independent E1 QA follows; E2 implementation has not started.
 - Owner decisions complete: all network accounts, one main-site cron; two bulk modes later, excluding only initiator. No product question currently blocks execution.
 
 | Accepted task | Local commit | Decisive evidence |
@@ -21,6 +21,7 @@
 | T3 expiry UI | `fb9e265` | Actual negative-count red; boundary/overdue/pending/disabled/fallback/no-mutation tests green on all three targets. |
 | T4 repeat resets + compatibility | `4f73323` | Actual repeated-reset red; final three targets green including reset/profile/history/mail/CLI, without CLI warning. |
 | T5a network policy/scheduler | `0a784e3` | All three targets green including real network Carbon authorization, unassigned accounts, caps, single main-site cron and deactivation. |
+| T5b MU bootstrap and transitions | `b43ced0` | All three targets green, including held/expired lock, failed-seed retry, ordinary/MU transitions, coexistence and removal cleanup. |
 | T8 bulk design | Plan/evidence | Both modes, network scope, initiator exclusion, bounded job and error contract recorded; implementation waits for E1 QA. |
 
 Original untracked AGENTS/.codex remain outside commits. Remote CI, push/merge/release and GitHub writes have not run. Detailed historical failures and repairs below are superseded by accepted checkpoints where explicitly recorded.
@@ -101,6 +102,26 @@ Original untracked AGENTS/.codex remain outside commits. Remote CI, push/merge/r
 - Это дизайн и task refinement корневого delivery owner, не реализация. T9 остаётся waiting_dependency на T7; новые продуктовые требования не добавлены.
 
 ## Root-authored changes
+
+- T6 final runtime gate PASS: уже пройденный `php74-wp50` дополнен `bash dev/tests/run.sh php74-wp68` exit0 (~26s) и `php82-wp68` exit0 (~34s). Итого все3version targets прошли по9constantprofiles: boolean pairs, integer strings/zero, decimal minimum, actual registration/reset, cron, conflicting saved options и точная Carbon UI indication; полный ordinary/MU/network regression pass. PHP versions7.4.33/8.2.33, WP5.0/6.8. Runtime warnings отсутствуют; четыре frozen hashes/status неизменны, cleanup выполнен, новых artifacts нет. Root принимает T6 для scoped commit; следующий batch T7 Stream fixture и затем независимый E1 QA.
+
+- T6 isolation matrix: `bash dev/tests/run.sh php74-wp50` exit0 (~45–55s), все9constantprofiles и полный ordinary/MU/network набор pass. `php74-wp68` exit1 до тестов: загрузка wordpress-6.8.tar.gz оборвалась с cURL18 (~4min). `php82-wp68` не запускался. Cleanup выполнен, status/diff/hash boundary неизменны. Это transport failure, не product verdict; следующий monitor повторяет только оставшиеся php74-wp68 → php82-wp68 на том же diff, без повторения уже пройденного WP5.
+
+- T6 isolation repair принят: после всех assertions и восстановления options fixture удаляет только созданный ею account через `wp_delete_user` и проверяет успешный результат API. Product и network expected mail count не менялись. PHP/diff checks pass; fixture SHA `ce8940ac`, writer остановлен. Требуется полная matrix на очищающем fixture.
+
+- T6 third runtime: `bash dev/tests/run.sh php74-wp50`, exit1 (~41s). Все девять constant profiles и MU transitions прошли; следующий network scenario failed `main callback attempted unexpected mail count`. Новые fixture accounts с age1/2days попадают под последующую network policy interval1; fresh tests-only repair проверяет и устраняет загрязнение сценариев, сохраняя точный expected mail count. Другие version targets не запускались; cleanup и unchanged hash/status подтверждены.
+
+- T6 reminder fixture repair принят: positive interval3 использует age2days, внутри window и до expiry; zero scenario сохранён. Product не менялся, PHP/diff checks pass, fixture SHA `b34a487f`. Writer остановлен; повторная полная matrix — финальный runtime gate T6.
+
+- T6 second runtime: WP5.0/PHP7.4.33, `bash dev/tests/run.sh php74-wp50` exit1 (~36s). Два constant profiles прошли; третий остановился на `cron zero or positive reminder`. Root trace: fixture задаёт age ровно1day при interval3days/pre-init2days, а существующее сравнение строгое `>`; это не надёжная точка внутри reminder window. Fresh tests-only repair перемещает timestamp внутрь окна, сохраняя product comparator и positive/zero/no-hard-reset assertions. Остальные version targets не запускались, cleanup/status/hash checks pass.
+
+- T6 Carbon fixture repair принят: Carbon `get_name()` добавляет `_`, тогда как registered slug возвращает `get_base_name()`. Fixture теперь использует base name и по-прежнему требует ровно три поля с точными HTML-значениями; product не менялся. PHP lint трёх файлов, bash-n/diff-check pass. Writer остановлен; повторная matrix обязательна.
+
+- T6 first runtime: `bash dev/tests/run.sh php74-wp50`, WP5.0/PHP7.4.33, exit1 (~34s), first constant profile failed `overridden fields not shown`; prior lifecycle/expiry/cron/reset scenarios pass. Другие profiles/targets не запускались; cleanup выполнен, git status/diff неизменны. Fresh worker проверяет Carbon field-name/container expectation и раннюю загрузку constants; UI AC не снимается.
+
+- T6 integration review pass: main checkout Settings и два новых PHP fixtures точно совпадают с reviewed isolated hashes (`253d49d8`, `f8b998c3`, `eb2693aa`); T5b MU setup/readme сохранены. Worker PHP lint/sh-n/diff checks pass; root bash-n/diff-check pass. Writer остановлен. Runtime ещё не выполнен; следующий test_monitor проверяет три цели с девятью constant profiles в каждой.
+
+- T5b доставлена локальным коммитом `b43ced0`; T5 completed. T6 isolated diff принят статически: central boolean/integer normalization, same UI/runtime values, decimal minimum preserved, nine separate WP bootstraps. Fresh worker переносит ровно этот diff поверх T5b, сохраняя MU wiring и readme; runtime T6 ещё не выполнен.
 
 - T5b final gate PASS: `bash dev/tests/run.sh php74-wp50`, `php74-wp68`, `php82-wp68` все exit0 (38/45/36s), WP5.0/PHP7.4.33, WP6.8/PHP7.4.33, WP6.8/PHP8.2.33. Ordinary/deferred/deactivation, MU held/expired lock, failed-history retry, repeats, manual-removal cleanup, mode transitions, network coexistence/history/caps/main cron и прежние scenarios pass. Runtime warnings отсутствуют; runner resources очищены, status/hash boundary неизменны, generated files отсутствуют. Root принимает T5b для scoped commit, затем интеграция T6 из отдельного checkout.
 

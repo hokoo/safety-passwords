@@ -39,6 +39,14 @@ wp --user=integration-admin eval-file /test-fixtures/cron-reset-lifecycle.php se
 wp --user=integration-admin eval-file /test-fixtures/cron-reset-lifecycle.php cleanup
 wp safety check-users
 
+# Each WP-CLI request defines one constant set before WordPress loads the plugin.
+for constant_case in false_bool false_string true_bool true_string zero_int zero_string one_int one_string decimal_min; do
+  SP_TEST_CONSTANT_CASE=$constant_case
+  export SP_TEST_CONSTANT_CASE
+  wp --require=/test-fixtures/constant-bootstrap.php --user=integration-admin eval-file /test-fixtures/string-constants.php
+done
+unset SP_TEST_CONSTANT_CASE
+
 # Check interrupted MU startup and ordinary-to-MU transition.
 wp plugin deactivate safety-passwords --quiet
 wp eval-file /test-fixtures/deactivation.php

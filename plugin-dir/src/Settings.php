@@ -35,7 +35,7 @@ class Settings {
 		} else {
 			$value      = self::getOverloaded( 'rp_on_registration' ) ? __('Enabled', 'safety-passwords' ) : __( 'Disabled', 'safety-passwords' );
 			$settings[] = Field::make( 'html', self::$optionPrefix . 'rp_on_registration_disabled' )
-			                   ->set_html( "[$value]". __( "<b>Change After Registration</b> Overwritten by constant<br/><small><i>Force users to change their password after registration</i></small>", 'safety-passwords' ) );
+			                   ->set_html( '[' . esc_html( $value ) . ']' . __( "<b>Change After Registration</b> Overwritten by constant<br/><small><i>Force users to change their password after registration</i></small>", 'safety-passwords' ) );
 		}
 
 		if ( ! self::isOverloaded( 'min_len' ) ) {
@@ -48,7 +48,7 @@ class Settings {
 		} else {
 			$value      = self::getOverloaded( 'min_len' ) ;
 			$settings[] = Field::make( 'html', self::$optionPrefix . 'min_len_disabled' )
-			                   ->set_html( "[$value]" . __( "<b>Password's minimum length</b> Overwritten by constant<br/>", 'safety-passwords' ) );
+			                   ->set_html( '[' . esc_html( (string) $value ) . ']' . __( "<b>Password's minimum length</b> Overwritten by constant<br/>", 'safety-passwords' ) );
 		}
 
 		if ( ! self::isOverloaded( 'reset_interval' ) ) {
@@ -62,7 +62,7 @@ class Settings {
 		} else {
 			$value      = self::getOverloaded( 'reset_interval' ) ;
 			$settings[] = Field::make( 'html', self::$optionPrefix . 'reset_interval_disabled' )
-			                   ->set_html( "[$value]" . __( "<b>Force Password Reset Interval (days)</b> Overwritten by constant<br/>", 'safety-passwords' ) );
+			                   ->set_html( '[' . esc_html( (string) $value ) . ']' . __( "<b>Force Password Reset Interval (days)</b> Overwritten by constant<br/>", 'safety-passwords' ) );
 		}
 
 
@@ -80,7 +80,22 @@ class Settings {
 	}
 
 	private static function getOverloaded( $optionSlug ) {
-		return constant( 'SAFETY_PASSWORDS_' . strtoupper( $optionSlug ) );
+		$value = constant( 'SAFETY_PASSWORDS_' . strtoupper( $optionSlug ) );
+		if ( 'rp_on_registration' === $optionSlug ) {
+			return wp_validate_boolean( $value );
+		}
+
+		if ( in_array( $optionSlug, [ 'min_len', 'reset_interval' ], true ) && is_string( $value )
+			&& preg_match( '/^([+-]?)([0-9]+)$/D', $value, $matches ) ) {
+			$digits = ltrim( $matches[2], '0' );
+			$normalized = ( '-' === $matches[1] && '' !== $digits ? '-' : '' ) . ( '' === $digits ? '0' : $digits );
+			$integer = filter_var( $normalized, FILTER_VALIDATE_INT );
+			if ( false !== $integer ) {
+				return $integer;
+			}
+		}
+
+		return $value;
 	}
 
 	/**

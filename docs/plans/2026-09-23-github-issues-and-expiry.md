@@ -142,7 +142,7 @@ Notes/Risks: ошибку доставки и повторную попытку 
 
 ### T5. MU lifecycle и его network-контракт (#7)
 
-Status: in_progress
+Status: completed
 Goal: MU-установка работает без ручного посещения страницы настроек и обычного activation hook.
 Scope: сначала короткое решение о поддержанном loader/порядке загрузки, однократной инициализации и network scope; затем отдельный ограниченный implementation batch с тестами и документацией.
 Out of Scope: смена общей password policy, автоматическая очистка данных после физического удаления MU-файлов.
@@ -166,7 +166,7 @@ Notes/Risks: периодическая политика не имеет иск�
 
 #### T5b. Идемпотентная MU-инициализация и переходы режимов
 
-Status: in_progress
+Status: completed
 Goal: supported MU loader запускает полный lifecycle после готовности Carbon без страницы настроек.
 Scope: Activation/bootstrap/internal service marker и lock, initialization/history/caps, lifecycle fixtures и инструкции установки/удаления в обеих readme.
 Out of Scope: автоматическая очистка после физического удаления MU-файлов, миграция пользовательских метаданных, новая password policy.
@@ -178,7 +178,7 @@ Notes/Risks: не считать add_site_option атомарным lock; не �
 
 ### T6. Строковые значения констант (#8)
 
-Status: todo
+Status: in_progress
 Goal: строковые значения из CI/CD эквивалентны типизированным и одинаково представлены в UI.
 Scope: нормализация известных настроек в Settings, места отображения и потребления, integration scenarios, обе readme.
 Out of Scope: переименование констант, новый alias MIN_LENGTH, новые допустимые диапазоны или универсальный parser произвольных env-строк.
