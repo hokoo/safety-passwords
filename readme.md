@@ -65,4 +65,23 @@ Run a target twice to confirm repeatability. The new targets pin WordPress core 
 
 The runner selects two `/24` subnets from `10.254.0.0/16` after inspecting existing Docker networks and local IPv4 routes and interfaces. It refuses to create a target if that inspection fails or fewer than two free subnets remain.
 
+## Local release package preparation
+
+Release preparation uses a committed source SHA, not the current `plugin-dir/vendor` or uncommitted plugin files. The builder exports the tracked plugin files into a fresh temporary stage and runs Composer there with `--no-dev --no-scripts --no-plugins --prefer-dist --no-interaction`. It produces `safety-passwords-wp-plugin.zip` with one `safety-passwords/` root and a companion JSON manifest of the source SHA, version, file checksums and ZIP checksum. The existing GitHub release asset basename is retained. These commands only prepare and validate a local package; they do not tag, publish or deploy it.
+
+```bash
+source_sha=$(git rev-parse HEAD)
+release_dir=$(mktemp -d /tmp/sp-release.XXXXXX)
+python3 dev/release/source.py verify --source-sha "$source_sha"
+python3 dev/release/package.py build --source-sha "$source_sha" --output-dir "$release_dir"
+python3 dev/release/package.py validate --source-sha "$source_sha" \
+  --zip "$release_dir/safety-passwords-wp-plugin.zip" \
+  --manifest "$release_dir/safety-passwords-wp-plugin.manifest.json"
+python3 dev/release/tests/check_package.py --source-sha "$source_sha" \
+  --zip "$release_dir/safety-passwords-wp-plugin.zip" \
+  --manifest "$release_dir/safety-passwords-wp-plugin.manifest.json"
+```
+
+For a published stable release, first verify the exact public tag and current `master` ancestry with `source.py verify --source-sha "$source_sha" --tag v1.5 --publication`; then pass the same `--tag v1.5` to build and validate. Tags may use `v` or no prefix and two or three numeric version parts, but must match the plugin header, `VERSION`, Stable tag and current changelog exactly. An `-rc.N` or `-beta.N` tag requires `--prerelease` on every command and must remain a prerelease outside WordPress.org delivery. A caller handling a downloaded artifact should pass its independently trusted digest to validation with `--expected-zip-sha256`; the companion manifest alone is not that trust source. Build twice into separate temporary directories and compare ZIP and manifest checksums before relying on reproducibility. Actual release automation and WordPress.org delivery are separate pending work.
+
 The cron scenario checks plugin boot, one `twicedaily` event, repeat scheduling, removal, and the enabled and zero interval callback paths. The activation scenario checks the deferred setup of the periodic event and initial password history on the next normal request. Nine separate WordPress bootstraps check boolean and numeric constants against registration flags, reset minimum length, cron reminders, conflicting saved options, and settings display. The MU scenarios check held and expired startup locks, repeat requests, ordinary/MU transitions, and network bootstrap for unassigned and subsite accounts. The runner then converts its disposable installation to multisite and checks network settings, all-account coverage, site capabilities, authorization, main-site scheduling, duplicate cleanup, and deactivation. Its final phase checks the fallback without Stream, then activates real Stream 4.0.0 and verifies one deferred and one immediate connector record, plus the custom logger override. A temporary MU preloader filters records before Stream activation. The failure-path phase rejects unsafe plugin payloads before insertion, retains their categories and counts, and clears Stream's actor fields. The Stream plugin and filter exist only in the disposable volume. A remote CI result is available only after the workflow has run on GitHub.
