@@ -5,6 +5,7 @@ import argparse
 import contextlib
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -221,37 +222,57 @@ def check_svn(inputs, directory):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source-sha", required=True)
-    parser.add_argument("--tag")
-    parser.add_argument("--prerelease", action="store_true")
-    parser.add_argument("--zip", required=True)
-    parser.add_argument("--manifest", required=True)
-    parser.add_argument("--expected-zip-sha256", required=True)
-    inputs = parser.parse_args()
-    with contextlib.redirect_stdout(io.StringIO()):
-        package.validate(inputs)
+    phase = "arguments"
     try:
-        original = json.loads(Path(inputs.manifest).read_text(encoding="utf-8"))
-        version = original["version"]
-    except (OSError, ValueError, KeyError, TypeError):
-        raise source.ReleaseError("fixture_manifest_unavailable")
-    if not isinstance(version, str) or not source.VERSION_RE.fullmatch(version):
-        raise source.ReleaseError("fixture_version_invalid")
-    with tempfile.TemporaryDirectory(prefix="sp-release-delivery-") as temporary:
-        fixture_manifest = Path(temporary) / asset.MANIFEST_NAME
-        original["tag"] = "v" + version
-        original["prerelease"] = False
-        fixture_manifest.write_text(json.dumps(original, sort_keys=True, separators=(",", ":")) + "\n",
-                                    encoding="utf-8")
-        fixture = argparse.Namespace(source_sha=inputs.source_sha, tag="v" + version,
-                                     prerelease=False, zip=inputs.zip, manifest=str(fixture_manifest),
-                                     expected_zip_sha256=inputs.expected_zip_sha256, version=version)
+        parser = argparse.ArgumentParser(description=__doc__)
+        parser.add_argument("--source-sha", required=True)
+        parser.add_argument("--tag")
+        parser.add_argument("--prerelease", action="store_true")
+        parser.add_argument("--zip", required=True)
+        parser.add_argument("--manifest", required=True)
+        parser.add_argument("--expected-zip-sha256", required=True)
+        inputs = parser.parse_args()
+        phase = "artifact"
         with contextlib.redirect_stdout(io.StringIO()):
-            package.validate(fixture)
-        check_asset(fixture)
-        check_mirror(fixture, Path(temporary))
-        check_svn(fixture, Path(temporary))
+            package.validate(inputs)
+        try:
+            original = json.loads(Path(inputs.manifest).read_text(encoding="utf-8"))
+            version = original["version"]
+        except (OSError, ValueError, KeyError, TypeError):
+            raise source.ReleaseError("fixture_manifest_unavailable")
+        if not isinstance(version, str) or not source.VERSION_RE.fullmatch(version):
+            raise source.ReleaseError("fixture_version_invalid")
+        with tempfile.TemporaryDirectory(prefix="sp-release-delivery-") as temporary:
+            fixture_manifest = Path(temporary) / asset.MANIFEST_NAME
+            original["tag"] = "v" + version
+            original["prerelease"] = False
+            fixture_manifest.write_text(json.dumps(original, sort_keys=True, separators=(",", ":")) + "\n",
+                                        encoding="utf-8")
+            fixture = argparse.Namespace(source_sha=inputs.source_sha, tag="v" + version,
+                                         prerelease=False, zip=inputs.zip, manifest=str(fixture_manifest),
+                                         expected_zip_sha256=inputs.expected_zip_sha256, version=version)
+            with contextlib.redirect_stdout(io.StringIO()):
+                package.validate(fixture)
+            phase = "github"
+            check_asset(fixture)
+            phase = "mirror"
+            template = Path(temporary) / "empty-git-template"
+            template.mkdir()
+            previous_template = os.environ.get("GIT_TEMPLATE_DIR")
+            os.environ["GIT_TEMPLATE_DIR"] = str(template)
+            try:
+                check_mirror(fixture, Path(temporary))
+            finally:
+                if previous_template is None:
+                    os.environ.pop("GIT_TEMPLATE_DIR", None)
+                else:
+                    os.environ["GIT_TEMPLATE_DIR"] = previous_template
+            phase = "svn"
+            check_svn(fixture, Path(temporary))
+    except source.ReleaseError:
+        raise
+    except Exception as error:
+        raise source.ReleaseError("unexpected_" + phase + "_" + type(error).__name__) from None
     return 0
 
 

@@ -99,7 +99,9 @@ def operate(args):
         source.git("init", "--quiet", str(checkout))
         # The validated ZIP is the distribution contract. Keep even CRLF license
         # files byte-exact when Git stages the temporary mirror checkout.
-        (checkout / ".git/info/attributes").write_text("* -text\n", encoding="ascii")
+        attributes = checkout / ".git/info/attributes"
+        attributes.parent.mkdir(parents=True, exist_ok=True)
+        attributes.write_text("* -text\n", encoding="ascii")
         source.git("remote", "add", "origin", args.remote, cwd=checkout)
         source.git("fetch", "--quiet", "--no-tags", "--depth=1", "origin",
                    "+refs/heads/" + args.branch + ":refs/remotes/origin/" + args.branch,

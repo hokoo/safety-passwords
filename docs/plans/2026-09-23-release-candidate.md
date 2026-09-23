@@ -2,7 +2,7 @@
 
 This candidate branches from accepted E1 commit `80c1a69213f838aa23197cba71e30a02e275301d`. It adds the WordPress 7.1.2/PHP 8.5 and 8.2 platform adaptation from `dfe9073818cdb83f005df7cd1f06dbef725edc91`, the coherent 1.5 plugin version/Stable tag, and release documentation. The earlier 1.4.3 candidate at `257234d` passed its local verification; the separately reviewed 1.5 metadata update passed PHP lint, consistency and diff checks. Current automation scope and evidence are recorded in `2026-09-23-release-automation.md`.
 
-PR #21 tracks `release/1.4.3-ready` against `master`; the branch name is retained while the candidate version changes to 1.5. The previous product and test behavior passed at `257234d`; the scoped version review passed at `9debab3`. Release package verification passed at `3aeea53`; automatic WordPress.org delivery is being implemented under the release automation plan. The deferred E2 branch remains outside the PR.
+PR #21 tracks `release/1.4.3-ready` against `master`; the branch name is retained while the candidate version changes to 1.5. The previous product and test behavior passed at `257234d`; the scoped version review passed at `9debab3`. Release package verification passed at `3aeea53`; automatic WordPress.org delivery and its final acceptance evidence are tracked in the release automation plan. The deferred E2 branch remains outside the PR.
 
 | Scope | Accepted local evidence |
 | --- | --- |
@@ -18,7 +18,7 @@ E1 QA's operational note remains: older Stream records may contain previous deta
 
 - Entire E2/#10 is excluded: enforced next-login soft reset, installation-wide hard coordination, bulk backend, and unfinished bulk UI are not in this branch. The recoverable WIP snapshot is `delivery/issues-lifecycle-expiry` at `f8395575790cf733354bc7ca31e9328ee6664df0`. Its T9-pre, T9-lock, and T9a behavior was implemented and tested locally, but T9b still needs all three browser contexts, a final five-target rerun, and independent T10/E2 QA. Issue #10 is unfinished.
 - All five GitHub integration targets passed on `f4d40e4` in both push and pull-request runs, including both WP6.8 targets whose fresh local reruns had been deferred. The new automation requires its own artifact-based verification. Browser and E2 gates apply to the deferred delivery, not to this release cut.
-- Publication is a separate decision after remote CI and any required merge approval. Publishing a GitHub release triggers the existing workflow, which pushes built branches and can deploy to WordPress.org. That workflow was not run during the earlier local verification; the current 1.5 edit does not change or run it. PR #21 exists, but no merge, tag, release, deployment, or GitHub issue status change is claimed here.
+- Publication is a separate decision after remote CI and any required merge approval. Publishing a GitHub release triggers the prepared workflow, which can push distribution branches and deploy to WordPress.org. Its verification and delivery helpers use a pinned public `master` checkout to check the release event SHA and tag; the candidate package tests receive no publication credentials. This does not protect secrets from an actor authorized to change the workflow itself. PR #21 exists, but no merge, tag, release, deployment, or GitHub issue status change is claimed here.
 
 ## Accepted local verification
 

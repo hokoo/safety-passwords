@@ -16,26 +16,29 @@ jobs:
     runs-on: ubuntu-22.04
     outputs:
       source_sha: ${{ steps.source.outputs.source_sha }}
+      trusted_checker_sha: ${{ steps.source.outputs.trusted_checker_sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: master
           fetch-depth: 0
           persist-credentials: false
       - name: Verify public tag, master ancestry and plugin version
         id: source
         shell: bash
         env:
+          EVENT_SHA: ${{ github.sha }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           IS_PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           set -euo pipefail
-          source_sha=$(git rev-parse HEAD)
+          trusted_checker_sha=$(git rev-parse HEAD)
           kind=()
           if [[ "$IS_PRERELEASE" == true ]]; then kind+=(--prerelease); fi
-          python3 dev/release/source.py verify --source-sha "$source_sha" \
+          python3 dev/release/source.py verify --source-sha "$EVENT_SHA" \
             --tag "$RELEASE_TAG" --publication "${kind[@]}"
-          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$EVENT_SHA" >> "$GITHUB_OUTPUT"
+          echo "trusted_checker_sha=$trusted_checker_sha" >> "$GITHUB_OUTPUT"
 
   integration:
     needs: verify
@@ -55,7 +58,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: ${{ needs.verify.outputs.source_sha }}
+          ref: ${{ needs.verify.outputs.trusted_checker_sha }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
@@ -70,13 +74,14 @@ jobs:
         shell: bash
         env:
           SOURCE_SHA: ${{ needs.verify.outputs.source_sha }}
+          TRUSTED_SHA: ${{ needs.verify.outputs.trusted_checker_sha }}
           TESTED_SHA: ${{ needs.integration.outputs.source_sha }}
           ZIP_SHA256: ${{ needs.integration.outputs.zip_sha256 }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           IS_PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           set -euo pipefail
-          [[ "$SOURCE_SHA" == "$TESTED_SHA" && "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
+          [[ "$SOURCE_SHA" == "$TESTED_SHA" && "$(git rev-parse HEAD)" == "$TRUSTED_SHA" ]]
           kind=()
           if [[ "$IS_PRERELEASE" == true ]]; then kind+=(--prerelease); fi
           python3 dev/release/source.py verify --source-sha "$SOURCE_SHA" \
