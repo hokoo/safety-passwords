@@ -22,6 +22,8 @@ E1 QA's operational note remains: older Stream records may contain previous deta
 
 ## Accepted local verification
 
+Final 1.5 acceptance is recorded in the release automation plan: independent QA returned `pass_with_notes` at `eed608d`; both GitHub push and PR runs passed package checks and all five WordPress/PHP targets. The same release-package path also passed the local WordPress 7.1.2/PHP 8.5.10 scenario and credentialless public SVN dry-run. The following paragraph preserves the earlier product-verification boundary; no actual publication has occurred.
+
 The earlier 1.4.3 candidate was E1 `80c1a69` plus the nine scoped release paths. All three serial commands exited 0 without observed warnings: `bash dev/tests/run.sh php85-wp712` (WordPress 7.1.2/PHP 8.5.10, ~55.2s), `bash dev/tests/run.sh php82-wp712` (WordPress 7.1.2/PHP 8.2.33, ~37.1s), and `bash dev/tests/run.sh php74-wp50` (WordPress 5.0/PHP 7.4.33, ~40.4s). Lifecycle, expiry, MU, two-network policy, Stream and CLI scenarios passed. All nine hashes and status paths remained unchanged; disposable resources were removed.
 
 PHP lint of both changed PHP files, shell syntax, workflow YAML parsing and `git diff --check` passed for that earlier candidate. Independent focused release QA returned **pass_with_notes**: no technical blocker; the historical Stream assessment remains the operational note. Root accepted that release cut for a scoped local commit. The current 1.5 metadata change does not alter the tested password or runner behavior, but its own review and delivery state must be recorded separately. No remote CI, PHPUnit, PHPCS or plugin-check result is claimed.

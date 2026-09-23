@@ -43,7 +43,7 @@ Notes/Risks: WPORG_USERNAME/WPORG_PASSWORD names exist; values/authentication va
 
 ### R3. Independent QA and update PR #21
 
-Status: in_progress
+Status: completed
 Goal: deliver the verified 1.5 automation for review.
 Scope: independent release/security QA, actual check evidence, scoped commits/push and PR title/body update.
 Out of Scope: merge, release creation, WordPress.org publication or issue closure.
@@ -55,6 +55,8 @@ Notes/Risks: remote CI may require a bounded repair; no automatic waiver.
 
 ## Evidence
 
+- Final acceptance: independent QA returned `pass_with_notes` for frozen `f4d40e4..eed608d` and the actual PR #21 handoff. Both [PR CI](https://github.com/hokoo/safety-passwords/actions/runs/35879149773) and [push CI](https://github.com/hokoo/safety-passwords/actions/runs/35879143223) passed package checks and all five WordPress/PHP targets at `eed608d518014c509181aebdc418533f1dbd9d2e`. The earlier failed runs are superseded; none was waived. PR #21 is titled “Prepare 1.5: password expiry fixes and verified WordPress.org releases” and records final behavior, verification, secret names and exclusions. This closing record changes delivery documentation only; product, helpers and workflows remain the accepted code revision.
+- Remaining publication boundary: no real tag, GitHub Release, SVN write, merge, issue closure or credential-validity check occurred. Repository workflow authors remain inside GitHub's secret-access trust boundary. The historical Stream-record operator assessment remains applicable before publication. E2/#10 stays deferred on its separate local branch. Existing untracked `AGENTS.md` and `.codex/` are preserved and excluded from the PR.
 - QA repair locally verified: the release workflow validates the event SHA/tag from public `master` before candidate execution and carries that trusted helper revision into delivery. Mirror staging creates its attributes directory explicitly; the fixture exercises an empty Git template and emits only fixed phase/type diagnostics. Actionlint, Python AST and diff checks passed; one retained-package delivery run passed in 7.37s. The historical push exception was masked, so its exact cause remains unproven; new push and PR runs must pass before final acceptance. Existing public dry-run and package-backed WordPress results remain applicable to unchanged SVN/product behavior.
 - Independent QA at `95668df` returned `fail`: the tag/master checker ran from candidate code and must instead run from trusted public `master`, with its immutable checker revision carried into delivery; a matching push CI failure also remains unexplained. PR run [35877706868](https://github.com/hokoo/safety-passwords/actions/runs/35877706868) passed package and all five targets, while push run [35877697526](https://github.com/hokoo/safety-passwords/actions/runs/35877697526) failed with `unexpected_error` between mocked GitHub and mirror completion. A bounded workflow/fixture repair is authorized; no failed gate is waived. Repository actors able to author workflows remain within the existing GitHub Actions trust boundary, which code-only source checks cannot replace with repository access controls.
 - R3 sequencing: commit the locally verified frozen R2b diff and update the authorized PR branch so real GitHub CI can run while independent read-only QA reviews the same file hashes. Final acceptance waits for both the independent gate and actual remote matrix; pushing for review does not authorize publication.
