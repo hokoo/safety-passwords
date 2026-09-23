@@ -142,7 +142,7 @@ Notes/Risks: ошибку доставки и повторную попытку 
 
 ### T5. MU lifecycle и его network-контракт (#7)
 
-Status: completed
+Status: in_progress
 Goal: MU-установка работает без ручного посещения страницы настроек и обычного activation hook.
 Scope: сначала короткое решение о поддержанном loader/порядке загрузки, однократной инициализации и network scope; затем отдельный ограниченный implementation batch с тестами и документацией.
 Out of Scope: смена общей password policy, автоматическая очистка данных после физического удаления MU-файлов.
@@ -154,19 +154,19 @@ Notes/Risks: пользователь подтвердил расширение 
 
 #### T5a. Единая сетевая политика и расписание
 
-Status: completed
+Status: in_progress
 Goal: сетевые настройки, выборка пользователей и cron имеют один и тот же охват.
 Scope: Settings/Carbon network getter и authorization; Controller network queries; Cron/Activation canonical main-site scheduling, cleanup legacy subsite events и capabilities; isolated network fixtures; обе readme.
 Out of Scope: MU one-time bootstrap (T5b), новые public hooks/CLI/форматы user-meta, массовые кнопки.
 DoR: T4 completed; network decision и технические границы записаны в evidence.
 DoD: G; ordinary single/network сценарии и права проверены на текущей PHP/WP matrix; scoped commit.
-AC: all-account queries включают unassigned; policy читается из network container без миграции; main site содержит ровно один twicedaily event, subsites — ноль; ensure/stop из subsite возвращают blog context; legacy subsite events удалены; subsite cron callback не повторяет network reset; network settings требуют manage_network_options; прежний custom cap сохранён для administrator roles, включая новые сайты.
+AC: при единственной сети queries включают unassigned; при нескольких сетях — только участников текущей сети (включая shared), без unassigned и other-network-only; policy читается из network container без миграции; main site содержит ровно один twicedaily event, subsites — ноль; ensure/stop из subsite возвращают blog context; legacy subsite events удалены; subsite cron callback не повторяет network reset; network settings требуют manage_network_options; прежний custom cap сохранён для administrator roles, включая новые сайты.
 Dependencies: T1, T2, T4. Полный MU gate остаётся в T5b.
-Notes/Risks: периодическая политика не имеет исключения инициатора; это исключение относится только к кнопкам T9. Изменение cron scope явно разрешено пользователем.
+Notes/Risks: периодическая политика не имеет исключения инициатора; это исключение относится только к кнопкам T9. Изменение cron scope явно разрешено пользователем. Уточнение пользователя после E1 QA: при нескольких сетях в одной WordPress-установке охват ограничен участниками текущей сети, без globally unassigned и other-network-only accounts. При единственной сети unassigned по-прежнему включены; shared accounts включены как участники текущей сети, пароль WordPress для них общий.
 
 #### T5b. Идемпотентная MU-инициализация и переходы режимов
 
-Status: completed
+Status: in_progress
 Goal: supported MU loader запускает полный lifecycle после готовности Carbon без страницы настроек.
 Scope: Activation/bootstrap/internal service marker и lock, initialization/history/caps, lifecycle fixtures и инструкции установки/удаления в обеих readme.
 Out of Scope: автоматическая очистка после физического удаления MU-файлов, миграция пользовательских метаданных, новая password policy.
@@ -209,7 +209,7 @@ Notes/Risks: #15 можно доставить отдельным меньшим
 | «Сбросить пароли и отправить письма» | Принудительный сброс сейчас и массовая отправка ссылок на установку нового пароля через WordPress reset API. |
 | «Потребовать смену при следующем входе» | Мягкое требование сменить пароль при следующем входе, без массовой рассылки и немедленной замены пароля самой командой. |
 
-Выбор обоих режимов зафиксирован. Пользователь отдельно подтвердил: multisite охватывает всю сеть, включая пользователей без привязки к сайтам, с одним cron на главном сайте; обе массовые операции затрагивают всех, включая администраторов, **кроме инициатора**. Технические правила обработки ошибок/пакетов фиксируются в T8 до реализации. Это уточнение плана, не разрешение выполнить массовую операцию на текущей установке.
+Выбор обоих режимов зафиксирован. Пользователь отдельно подтвердил: multisite охватывает всю текущую сеть с одним cron на главном сайте; обе массовые операции затрагивают всех, включая администраторов, **кроме инициатора**. При единственной сети включаются аккаунты без сайтов. По последующему решению пользователя для нескольких сетей в одной установке включаются только участники текущей сети, без непривязанных и принадлежащих только другим сетям аккаунтов. Технические правила обработки ошибок/пакетов фиксируются в T8 до реализации. Это уточнение плана, не разрешение выполнить массовую операцию на текущей установке.
 
 Outcome: администратор может предсказуемо запустить любой из двух режимов смены пароля для согласованной группы пользователей.
 Scope: T8–T10: оставшиеся решения об охвате/ошибках, backend обоих режимов, две кнопки, права, повторное выполнение, тесты и документация.

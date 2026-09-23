@@ -11,7 +11,7 @@
 
 ## Active batch
 
-- T1–T6 accepted. T7 review: Stream and full regression matrix passed on all three targets; scoped commit and independent E1 QA next. E2 implementation remains waiting_dependency on E1 acceptance.
+- T7 scope repair review: user-resolved multi-network behavior and full three-target matrix pass; scoped commit then fresh E1 QA. E2 remains waiting_dependency; no exception accepted and E1 not complete.
 - Owner decisions complete: all network accounts, one main-site cron; two bulk modes later, excluding only initiator. No product question currently blocks execution.
 
 | Accepted task | Local commit | Decisive evidence |
@@ -91,7 +91,7 @@ Original untracked AGENTS/.codex remain outside commits. Remote CI, push/merge/r
 
 ## T8 contract — completed design artifact
 
-- Два режима и единый сетевой охват выбраны пользователем; исключается только инициатор. В single-site — все пользователи установки, в multisite — все аккаунты сети, включая unassigned.
+- Два режима и сетевой охват выбраны пользователем; исключается инициатор. Single-site — все пользователи установки; единственная multisite network — все аккаунты, включая unassigned. Уточнение после QA: если сетей несколько, только участники текущей сети; globally unassigned и other-network-only исключены. Shared accounts входят как участники текущей сети, их пароль WordPress общий.
 - Soft: существующий rp_pre_inited, без рассылки/замены пароля/завершения активной сессии самой командой; переход на существующий reset flow при следующем входе. Hard: существующий rp_inited, WordPress password/reset API, попытка письма; soft не ослабляет hard, hard заменяет soft. last_reset не подделывается массовой командой.
 - Уже hard-marked аккаунт пропускается без повторной замены/письма. Ошибка отправки оставляет обязательный сброс, отражается агрегатом; восстановление через штатный WordPress lost-password flow. Автоматического повторного рандомизирования или новой retry-политики нет.
 - Пакеты ограничены по размеру, курсор по возрастанию ID и верхняя граница снимка на старте; новые аккаунты после старта не включаются, удаление аккаунтов не сдвигает offset. Служебное состояние операции хранит только необходимые идентификаторы/курсор/режим/агрегаты, без паролей, reset keys и почтовых payload. Никаких этих данных в evidence/logs.
@@ -103,6 +103,20 @@ Original untracked AGENTS/.codex remain outside commits. Remote CI, push/merge/r
 - Это дизайн и task refinement корневого delivery owner, не реализация. T9 остаётся waiting_dependency на T7; новые продуктовые требования не добавлены.
 
 ## Root-authored changes
+
+- T7 scope-repair runtime gate PASS: `bash dev/tests/run.sh php74-wp50`, `php74-wp68`, `php82-wp68`, все exit0 (~122s суммарно), WP5.0/PHP7.4.33, WP6.8/PHP7.4.33, WP6.8/PHP8.2.33. Two-network current/shared/inactive inclusion, other-only/unassigned untouched, other-network cron preservation, single-network unassigned и весь prior suite/Stream pass. Runtime warnings отсутствуют; только исходное Compose obsolete-version notice при preflight. Five hashes/status unchanged, runner cleanup выполнен, generated files отсутствуют. Root принимает repair для scoped commit; fresh независимый QA ещё обязателен.
+
+- T7 scope product repair static review pass: новый `UserScope::userIds` сохраняет single-site/one-network semantics, а при нескольких сетях фильтрует current-network memberships через `get_blogs_of_user(..., true)`, допускает bounded candidate list для T9 и сохраняет типы ID. Три consumer queries переведены на helper, docs/PR draft уточнены; scheduler/caps/public contracts не менялись. PHP lint3/diff-check pass; writer остановлен. Frozen UserScope `ddd8550b`, Controller `fd9a73f8`, Activation `9fc8e6e5`, fixture `db9ca4ea`, setup `0fdcf3e9`. Следующий gate — all3matrix с two-network regression и Stream.
+
+- T7 multi-network actual red подтверждён: один `bash dev/tests/run.sh php74-wp50`, WP5.0/PHP7.4.33, exit1 (~44s); two-network preparation прошёл. Четыре ожидаемых failures: other-only и unassigned history изменены MU completion, оба account состояния изменены first-network callback. Предыдущие scenarios pass; cleanup/status/HEAD unchanged, generated files отсутствуют. Root принимает regression; fresh worker исправляет общий selection по уточнённому scope, затем all3matrix и fresh QA.
+
+- T7 new fixture static compatibility repair: WordPress `wp_schedule_event` возвращает bool лишь с5.1, поэтому sentinel проверяется через фактически сохранённые timestamp/recurrence/args/count вместо return value. Product не менялся; PHP/diff-check pass, fixture SHA `db9ca4ea`. Root принимает static boundary для одного red run WP5.
+
+- T7 two-network regression ready: core `populate_network` + `wpmu_create_blog`, отдельные prepare/verify bootstraps, пять групп (current/shared/inactive-current/other-only/unassigned), history/MU completion/reset flags/password/mail/other-network cron. Source-only writer остановлен; PHP/sh-n/diff-check pass, root bash-n pass. Frozen fixture `c1b5539c`, setup `0fdcf3e9`. Следующий monitor выполняет один WP5 red scenario на прежнем product, затем scope repair.
+
+- Пользователь разрешил конкретный multi-network scope: **только участники текущей сети**, без unassigned; при единственной сети прежнее включение unassigned сохранено. Это новое явное решение области, не waiver QA. T7 regression worker получил current/shared/other-only/unassigned cases; далее общий selector для cron/history/MU completion и будущих T9 jobs, docs, matrix и fresh QA. Membership на archived/spam/deleted сайтах учитывается через core `get_blogs_of_user(..., true)`, сохраняя смысл наличия привязки; такие аккаунты не переименовываются в unassigned.
+
+- Independent `e1_independent_qa` gate **fail**, boundary `b02062431f91c890b681a242dae09fbcbf73ca21` → `6ae61cab9200d8ea98f5da7b36ab06949a2b0c87`. High: `get_users(blog_id=0)` в cron/history/MU completion выбирает общую таблицу пользователей нескольких сетей, тогда как settings/cron/sites scoped к текущей сети. Возможен reset аккаунтов только другой сети; текущая one-network fixture этого не доказывает. Остальные записанные criteria/матрица подтверждены review; diff-check pass. Запрошено решение: current-network members + globally unassigned как общие либо в multi-network исключить unassigned. После решения — bounded scope repair с two-network regression, matrix и fresh independent QA. E1 не принят, E2 не запущен.
 
 - T7 Stream runtime gate PASS: `bash dev/tests/run.sh php74-wp50` / `php74-wp68` / `php82-wp68`, все exit0 (~42/52/38s), actual WP5.0/PHP7.4.33, WP6.8/PHP7.4.33, WP6.8/PHP8.2.33. Все previous scenarios и Stream4.0.0 fallback/real connector/deferred+immediate persistence/privacy/custom override pass. Warnings отсутствуют; шесть hashes и git status/diff неизменны, own resources очищены, generated files отсутствуют. Root принимает testing/docs batch для scoped commit; E1 acceptance ещё требует fresh epic_qa.
 

@@ -92,3 +92,5 @@ wp --url=http://integration.invalid eval-file /test-fixtures/network-mu-lifecycl
 cp /test-fixtures/mu-loader.php wp-content/mu-plugins/10-safety-passwords-test-loader.php
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-mu-lifecycle.php initial
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-mu-lifecycle.php repeat
+wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-boundaries.php prepare
+wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-boundaries.php verify

@@ -338,7 +338,7 @@ class Controller {
 	}
 
 	public static function checkUsers( &$resetUsers = [], &$preInitedUsers = [] ) {
-		$users = get_users( [ 'fields' => 'ids', 'blog_id' => is_multisite() ? 0 : get_current_blog_id() ] );
+		$users = UserScope::userIds();
 		foreach ( $users as $user_id ) {
 			if ( '1' === get_user_meta( $user_id, Settings::$optionPrefix . 'rp_inited', true ) ) {
 				// A mandatory reset is already pending for this user.
@@ -433,7 +433,7 @@ class Controller {
 	}
 
 	public static function putCurrentPasswordsToStopList(): void {
-		$users = get_users( [ 'fields' => 'ids', 'blog_id' => is_multisite() ? 0 : get_current_blog_id() ] );
+		$users = UserScope::userIds();
 		foreach ( $users as $user_id ) {
 			$user = get_user_by( 'ID', $user_id );
 			if ( ! $user instanceof WP_User ) {

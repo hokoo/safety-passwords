@@ -119,7 +119,7 @@ class Activation {
 	}
 
 	private static function currentPasswordsHaveHistory(): bool {
-		$users = get_users( [ 'fields' => 'ids', 'blog_id' => is_multisite() ? 0 : get_current_blog_id() ] );
+		$users = UserScope::userIds();
 		foreach ( $users as $user_id ) {
 			$user = get_user_by( 'ID', $user_id );
 			if ( ! $user instanceof \WP_User ) {
