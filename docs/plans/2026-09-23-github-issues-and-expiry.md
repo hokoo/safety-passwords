@@ -190,7 +190,7 @@ Notes/Risks: PHP-строка `'0'` уже false, а `'false'` — true. `wp_val
 
 ### T7. Независимый QA и готовность закрытия E1
 
-Status: in_progress
+Status: review
 Goal: подтвердить E1 и подготовить проверяемые основания для закрытия #7/#8/#15.
 Scope: freeze diff/commits; test_monitor выполняет требуемую serial ladder, свежий epic_qa проверяет все AC/DoD; краткий delivery evidence и проект описания PR.
 Out of Scope: исправления внутри QA, push/merge/закрытие issues/release без разрешения.
@@ -243,16 +243,28 @@ AC: две отдельные кнопки вызывают строго выб�
 Dependencies: T8 и принятый E1 (T7).
 Notes/Risks: авторизация функции в продукте не разрешает выполнять её на текущих реальных пользователях при разработке.
 
+#### T9-pre. Обязательная смена до завершения нового входа
+
+Status: waiting_dependency
+Goal: существующий мягкий флаг действительно требует смены при новом входе.
+Scope: все rp_pre_inited paths (регистрация, напоминание, будущая массовая команда), login/reset integration, runtime fixtures и обе readme. Пользователь явно подтвердил усиление общего поведения.
+Out of Scope: завершение ранее открытых сессий, рассылка/немедленная замена пароля при soft marking, новые user-meta форматы, обходы password/history policy.
+DoR: E1 принят; решение пользователя записано в T8 evidence.
+DoD: G; реальное поведение новых и существующих сессий на трёх runtime targets; scoped commit.
+AC: новый вход не выдаёт неограниченную сессию до смены; прямой переход в admin не обходит требование; ошибка получения reset key не разрешает вход; прежние сессии сохраняются; silent reset flow не отправляет письмо и остаётся рабочим; успешная смена очищает существующие flags и допускает обычный вход; неверный пароль не даёт reset link; registration/reminder paths соблюдают тот же контракт.
+Dependencies: T7, T8.
+Notes/Risks: обновить прежний Stream failure fixture, характеризовавший fail-open; не ослаблять проверку безопасного payload.
+
 #### T9a. Пакетное выполнение и серверная авторизация
 
 Status: waiting_dependency
 Goal: оба режима выполняются ограниченными запросами с безопасным возобновлением.
 Scope: private job/service, POST/AJAX handlers, существующие reset APIs, runtime fixtures; контракт T8 в execution-evidence.
 Out of Scope: UI, новый cron/CLI/user-meta формат, реальные пользователи и рассылки.
-DoR: T7 принят; контракт T8 и правила single-site/network неизменны.
+DoR: T7 и T9-pre приняты; контракт T8 и правила single-site/network неизменны.
 DoD: G; реальные WordPress happy/failure/authorization/replay сценарии; scoped commit; UI интегрируется отдельно в T9b.
 AC: оба режима/охват/исключение инициатора по T8; nonce/capability/owner/mode на каждом POST; bounded cursor/high-water; atomic claim/CAS lease; resume без повторных reset/mail; additions/deletions корректны; сбой между шагами hard не оставляет вход без требования смены и не выдаётся за успех, неопределённый результат отражается частичной ошибкой без автоматического повторения эффекта.
-Dependencies: T7, T8.
+Dependencies: T7, T8, T9-pre.
 Notes/Risks: private job хранит только необходимые служебные данные; логирование — безопасные агрегаты. Новые публичные hooks/метаданные и ослабление требований не вводятся.
 
 #### T9b. Две кнопки, подтверждение и ход операции

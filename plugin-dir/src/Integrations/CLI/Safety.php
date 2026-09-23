@@ -18,8 +18,8 @@ class Safety extends WP_CLI_Command {
 		$preInitedUsers = [];
 		Controller::checkUsers( $resetUsers, $preInitedUsers );
 		// Log the results.
-		General::getLogger()->info( 'Users to reset: ' . implode( ', ', $resetUsers ) );
-		General::getLogger()->info( 'Users to pre-init: ' . implode( ', ', $preInitedUsers ) );
+		General::getLogger()->info( 'Users to reset.', [ 'count' => count( $resetUsers ) ] );
+		General::getLogger()->info( 'Users to pre-init.', [ 'count' => count( $preInitedUsers ) ] );
 
 		WP_CLI::success( 'Done.' );
 	}

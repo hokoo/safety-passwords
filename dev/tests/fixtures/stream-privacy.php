@@ -22,6 +22,22 @@ function sp_stream_failure_type( $message ) {
 	return '';
 }
 
+function sp_stream_cli_type( $message ) {
+	if ( 'Checking users for password reset.' === $message ) {
+		return 'checking';
+	}
+	if ( 'Failed to send a periodic password reset request.' === $message ) {
+		return 'hard';
+	}
+	if ( 'Users to reset.' === $message ) {
+		return 'reset';
+	}
+	if ( 'Users to pre-init.' === $message ) {
+		return 'reminder';
+	}
+	return '';
+}
+
 function sp_stream_failure_assert( $condition, $reason ) {
 	if ( ! $condition ) {
 		fwrite( STDERR, "FAIL: Stream failure privacy $reason\n" );
@@ -48,12 +64,36 @@ if ( '1' === getenv( 'SP_STREAM_FAILURE_PRIVACY' ) ) {
 	}, 1, 4 );
 }
 
+if ( '1' === getenv( 'SP_STREAM_CLI_PRIVACY' ) ) {
+	add_action( 'safety_passwords_stream_logger_write', function ( $level, $message, $meta, $module ) {
+		$type = sp_stream_cli_type( $message );
+		sp_stream_failure_assert( '' !== $type && 'general' === $module, 'unexpected CLI product payload before insertion' );
+		sp_stream_failure_assert( ( 'hard' === $type ? 'error' : 'info' ) === $level, 'unexpected CLI product level' );
+		if ( 'hard' === $type ) {
+			sp_stream_failure_assert( [ 'category' => 'mail_delivery_failed' ] === $meta, 'unsafe CLI failure context' );
+		} elseif ( 'reset' === $type || 'reminder' === $type ) {
+			sp_stream_failure_assert( [ 'count' => 1 ] === $meta, 'unsafe CLI result context or count' );
+		} else {
+			sp_stream_failure_assert( [] === $meta, 'unsafe CLI check context' );
+		}
+	}, 1, 4 );
+}
+
 add_filter( 'wp_stream_current_agent', function () {
 	// Avoid Stream's WP-CLI POSIX account lookup even before record filtering.
 	return 'synthetic';
 } );
 
 add_filter( 'wp_stream_log_data', function ( $data ) {
+	if ( '1' === getenv( 'SP_STREAM_CLI_PRIVACY' ) ) {
+		if ( ! is_array( $data ) || 'ctm-logger' !== ( $data['connector'] ?? null ) ) {
+			return false;
+		}
+		sp_stream_failure_assert( '' !== sp_stream_cli_type( $data['message'] ?? null ), 'unexpected CLI Stream data before insertion' );
+		$data['object_id'] = 0;
+		$data['user_id'] = 0;
+		return $data;
+	}
 	if ( '1' === getenv( 'SP_STREAM_FAILURE_PRIVACY' ) ) {
 		if ( ! is_array( $data ) || 'ctm-logger' !== ( $data['connector'] ?? null ) ) {
 			return false;
@@ -75,6 +115,25 @@ add_filter( 'wp_stream_log_data', function ( $data ) {
 }, PHP_INT_MAX );
 
 add_filter( 'wp_stream_record_array', function ( $record ) {
+	if ( '1' === getenv( 'SP_STREAM_CLI_PRIVACY' ) ) {
+		if ( ! is_array( $record ) || 'ctm-logger' !== ( $record['connector'] ?? null ) ) {
+			return [];
+		}
+		$type = sp_stream_cli_type( $record['summary'] ?? null );
+		sp_stream_failure_assert( '' !== $type, 'unexpected CLI Stream record before insertion' );
+		$allowed = 'hard' === $type ? [ 'category' ] : ( 'checking' === $type ? [] : [ 'count' ] );
+		$meta = [];
+		foreach ( $allowed as $key ) {
+			sp_stream_failure_assert( isset( $record['meta'][ $key ] ), 'CLI context missing from Stream record' );
+			$meta[ $key ] = $record['meta'][ $key ];
+		}
+		$record['meta'] = $meta;
+		$record['user_id'] = 0;
+		$record['object_id'] = 0;
+		$record['user_role'] = '';
+		$record['ip'] = '';
+		return $record;
+	}
 	if ( '1' === getenv( 'SP_STREAM_FAILURE_PRIVACY' ) ) {
 		if ( ! is_array( $record ) || 'ctm-logger' !== ( $record['connector'] ?? null ) ) {
 			return [];

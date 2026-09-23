@@ -23,3 +23,11 @@ SP_STREAM_FAILURE_PRIVACY=1
 export SP_STREAM_FAILURE_PRIVACY
 wp eval-file /test-fixtures/stream-failure-privacy.php
 unset SP_STREAM_FAILURE_PRIVACY
+wp eval-file /test-fixtures/stream-cli-privacy.php prepare
+SP_STREAM_CLI_PRIVACY=1
+export SP_STREAM_CLI_PRIVACY
+cli_output=$(wp safety check-users)
+[ "$cli_output" = 'Success: Done.' ] || { echo 'FAIL: CLI success output changed' >&2; exit 1; }
+unset cli_output
+unset SP_STREAM_CLI_PRIVACY
+wp eval-file /test-fixtures/stream-cli-privacy.php check
