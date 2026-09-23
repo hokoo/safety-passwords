@@ -5,7 +5,7 @@ Donate link: https://www.paypal.me/igortron
 Requires at least: 5.0
 Tested up to: 7.1.2
 Requires PHP: 7.4
-Stable tag: 1.4.3
+Stable tag: 1.5
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -76,7 +76,7 @@ To remove a must-use installation, remove the loader and then deactivate any ord
 
 
 == Changelog ==
-= 1.4.3 =
+= 1.5 =
 * Complete ordinary and must-use activation setup, current-network policy and scheduling, and isolated WordPress integration coverage.
 * Correct password expiry notices, repeated reset handling, constant overrides, and privacy-safe logging.
 * Test WordPress 7.1.2 with PHP 8.5 and 8.2; retain PHP 7.4 and WordPress 5 compatibility.

@@ -48,7 +48,7 @@ To remove an MU installation, remove its loader, deactivate any separately activ
 
 ## Isolated WordPress integration checks
 
-The local 1.4.3 candidate contains the accepted lifecycle, expiry, constants, logging, and integration work. Bulk reset controls and enforced next-login behavior are deferred to a separate E2 delivery; see `docs/plans/2026-09-23-release-candidate.md` for the exact cutoff and pending gates.
+The local 1.5 candidate contains the accepted lifecycle, expiry, constants, logging, and integration work. Bulk reset controls and enforced next-login behavior are deferred to a separate E2 delivery; see `docs/plans/2026-09-23-release-candidate.md` for the exact cutoff and pending gates.
 
 Install only the plugin dependencies first, then run the same targets used by CI. WordPress 7.1.2 on PHP 8.5 and 8.2 is the primary tested matrix. WordPress 5.0 and PHP 7.4 remain supported and tested, but WordPress 5 is deprecated for future development. The plugin readme's `Tested up to` value is 7.1.2.
 
