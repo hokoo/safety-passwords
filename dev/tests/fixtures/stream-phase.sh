@@ -19,3 +19,7 @@ SP_STREAM_CUSTOM_LOGGER=1
 export SP_STREAM_CUSTOM_LOGGER
 wp eval-file /test-fixtures/stream-integration.php custom
 unset SP_STREAM_CUSTOM_LOGGER
+SP_STREAM_FAILURE_PRIVACY=1
+export SP_STREAM_FAILURE_PRIVACY
+wp eval-file /test-fixtures/stream-failure-privacy.php
+unset SP_STREAM_FAILURE_PRIVACY

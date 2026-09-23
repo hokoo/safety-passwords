@@ -23,10 +23,9 @@ msgstr ""
 "X-Poedit-SearchPathExcluded-0: *.min.js\n"
 "X-Poedit-SearchPathExcluded-1: vendor\n"
 
-#: src/Controller.php:68
-#, php-format
-msgid "Failed to retrieve password for user %s"
-msgstr "Не удалось восстановить пароль для пользователя %s"
+#: src/Controller.php:67
+msgid "Failed to initiate a password reset at login."
+msgstr "Не удалось начать сброс пароля при входе."
 
 #: src/Controller.php:208
 #, php-format
@@ -80,10 +79,9 @@ msgstr ""
 "ничего страшного.%3$sПожалуйста, сделайте это сейчас, перейдя по следующей "
 "ссылке: <%2$s>"
 
-#: src/Controller.php:321
-#, php-format
-msgid "Failed to reset password for user %s"
-msgstr "Не удалось сбросить пароль для пользователя %s"
+#: src/Controller.php:364
+msgid "Failed to send a periodic password reset request."
+msgstr "Не удалось отправить запрос на периодический сброс пароля."
 
 #: src/Controller.php:346
 msgid ""

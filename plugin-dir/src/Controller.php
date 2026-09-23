@@ -63,16 +63,9 @@ class Controller {
 			if ( true !== $reset ) {
 				// Something went wrong when trying to init the password changing.
 				// We really don't know what it was. But it seems it's better to allow the user to log in.
-
-				/* Translators: %s - user login */
-				$msg = __( 'Failed to retrieve password for user %s', 'safety-passwords' );
-				if ( $reset instanceof WP_Error ) {
-					$msg .= ': ' . implode( '; ', $reset->get_error_messages() );
-				}
-
 				General::getLogger()->error(
-					sprintf( $msg, "{$user->user_login} [{$user->user_email}]" ),
-					[ 'user' => $user, 'error' => $reset ]
+					__( 'Failed to initiate a password reset at login.', 'safety-passwords' ),
+					[ 'category' => self::resetFailureCategory( $reset ) ]
 				);
 
 				return $redirect;
@@ -262,7 +255,7 @@ class Controller {
 			count( $resetUsers ),
 			count( $preInitedUsers ),
 		);
-		General::getLogger()->info( $string, [ 'resetUsers' => $resetUsers, 'preInitedUsers' => $preInitedUsers ] );
+		General::getLogger()->info( $string, [ 'resetCount' => count( $resetUsers ), 'reminderCount' => count( $preInitedUsers ) ] );
 	}
 
 	public static function retrievePassword( WP_User $user, $skip_email = false, &$reset_key = '' ) {
@@ -367,18 +360,10 @@ class Controller {
 				$reset = Controller::retrievePassword( $wp_user );
 
 				if ( true !== $reset ) {
-					// Something went wrong when trying to reset the password.
-					$msg = sprintf(
-						/* Translators: %s - user login and email */
-						__( "Failed to reset password for user %s", 'safety-passwords' ),
-						"{$wp_user->user_login} [{$wp_user->user_email}]"
+					General::getLogger()->error(
+						__( 'Failed to send a periodic password reset request.', 'safety-passwords' ),
+						[ 'category' => self::resetFailureCategory( $reset ) ]
 					);
-
-					if ( $reset instanceof WP_Error ) {
-						$msg .= ': ' . implode(  '; ', $reset->get_error_messages() );
-					}
-
-					General::getLogger()->error( $msg, [ 'user_id' => $user_id, 'error' => $reset ] );
 				}
 
 				$resetUsers[] = $user_id;
@@ -392,6 +377,14 @@ class Controller {
 				$preInitedUsers[] = $user_id;
 			}
 		}
+	}
+
+	private static function resetFailureCategory( $reset ): string {
+		if ( $reset instanceof WP_Error ) {
+			return in_array( 'retrieve_password_email_failure', $reset->get_error_codes(), true ) ? 'mail_delivery_failed' : 'reset_request_failed';
+		}
+
+		return 'unexpected_result';
 	}
 
 	public static function get_password_reset_message(): string {
