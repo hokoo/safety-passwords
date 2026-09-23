@@ -29,6 +29,16 @@ if [[ ! -f "$SP_TEST_ROOT/plugin-dir/vendor/autoload.php" ]]; then
   echo 'Plugin dependencies are missing; install only plugin-dir dependencies first.' >&2
   exit 2
 fi
+python3 - "$SP_TEST_ROOT/composer.lock" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding='utf-8') as lock_file:
+    packages = json.load(lock_file)['packages']
+stream = next((package for package in packages if package['name'] == 'wpackagist-plugin/stream'), None)
+if stream is None or stream['version'] != '4.0.0' or stream['dist']['url'] != 'https://downloads.wordpress.org/plugin/stream.4.0.0.zip':
+    raise SystemExit('Stream fixture does not match the root Composer lock; refusing to provision.')
+PY
 
 subnet_output=$(python3 "$SP_TEST_ROOT/dev/tests/select-subnets.py") || exit 2
 mapfile -t subnets <<< "$subnet_output"
@@ -63,4 +73,6 @@ created=1
 "${compose[@]}" up --detach --wait db >/dev/null
 "${compose[@]}" run --rm --no-TTY --entrypoint wp provision --allow-root core download --version="$wp_version" --quiet
 "${compose[@]}" run --rm --no-TTY --entrypoint sh cli /test-fixtures/container-setup.sh "$wp_version"
+"${compose[@]}" run --rm --no-TTY --entrypoint sh provision /test-fixtures/download-stream.sh
+"${compose[@]}" run --rm --no-TTY --entrypoint sh cli /test-fixtures/stream-phase.sh
 echo 'Integration scenario passed.'

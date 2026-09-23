@@ -49,7 +49,7 @@ Integrations with other plugins:
 
 Plugin development is on the [GitHub](https://github.com/hokoo/safety-passwords).
 
-For contributor testing, see the isolated WordPress integration check commands in the repository's `readme.md`. They cover cron behavior across the documented PHP and WordPress test targets.
+For contributor testing, see the isolated WordPress integration check commands in the repository's `readme.md`. They cover cron, lifecycle, settings and real Stream 4.0.0 integration across the documented PHP and WordPress test targets. The runner downloads Stream into a disposable WordPress volume and sanitizes its test records before storage.
 
 == Screenshots ==
 1. Settings page

@@ -35,6 +35,9 @@ jobs:
         run: |
           find plugin-dir -path plugin-dir/vendor -prune -o -name '*.php' -print0 | xargs -0 -r -n 1 php -l
           find dev/tests/fixtures -name '*.php' -print0 | xargs -0 -r -n 1 php -l
-          bash -n dev/tests/run.sh dev/tests/fixtures/container-setup.sh
+          bash -n dev/tests/run.sh
+          bash -n dev/tests/fixtures/container-setup.sh
+          sh -n dev/tests/fixtures/download-stream.sh
+          sh -n dev/tests/fixtures/stream-phase.sh
       - name: Isolated WordPress integration
         run: bash dev/tests/run.sh "${{ matrix.target }}"

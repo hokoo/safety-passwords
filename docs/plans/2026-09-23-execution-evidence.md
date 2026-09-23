@@ -11,7 +11,7 @@
 
 ## Active batch
 
-- T5/T5b completed in `b43ced0`. T6 review: final frozen diff passed all three version targets; scoped commit next. T7 Stream/independent E1 QA follows; E2 implementation has not started.
+- T1–T6 accepted. T7 review: Stream and full regression matrix passed on all three targets; scoped commit and independent E1 QA next. E2 implementation remains waiting_dependency on E1 acceptance.
 - Owner decisions complete: all network accounts, one main-site cron; two bulk modes later, excluding only initiator. No product question currently blocks execution.
 
 | Accepted task | Local commit | Decisive evidence |
@@ -22,6 +22,7 @@
 | T4 repeat resets + compatibility | `4f73323` | Actual repeated-reset red; final three targets green including reset/profile/history/mail/CLI, without CLI warning. |
 | T5a network policy/scheduler | `0a784e3` | All three targets green including real network Carbon authorization, unassigned accounts, caps, single main-site cron and deactivation. |
 | T5b MU bootstrap and transitions | `b43ced0` | All three targets green, including held/expired lock, failed-seed retry, ordinary/MU transitions, coexistence and removal cleanup. |
+| T6 string constants | `69f529e` | Nine constant profiles on each of three targets; actual registration/reset/cron and matching Carbon UI; full prior regression green. |
 | T8 bulk design | Plan/evidence | Both modes, network scope, initiator exclusion, bounded job and error contract recorded; implementation waits for E1 QA. |
 
 Original untracked AGENTS/.codex remain outside commits. Remote CI, push/merge/release and GitHub writes have not run. Detailed historical failures and repairs below are superseded by accepted checkpoints where explicitly recorded.
@@ -102,6 +103,18 @@ Original untracked AGENTS/.codex remain outside commits. Remote CI, push/merge/r
 - Это дизайн и task refinement корневого delivery owner, не реализация. T9 остаётся waiting_dependency на T7; новые продуктовые требования не добавлены.
 
 ## Root-authored changes
+
+- T7 Stream runtime gate PASS: `bash dev/tests/run.sh php74-wp50` / `php74-wp68` / `php82-wp68`, все exit0 (~42/52/38s), actual WP5.0/PHP7.4.33, WP6.8/PHP7.4.33, WP6.8/PHP8.2.33. Все previous scenarios и Stream4.0.0 fallback/real connector/deferred+immediate persistence/privacy/custom override pass. Warnings отсутствуют; шесть hashes и git status/diff неизменны, own resources очищены, generated files отсутствуют. Root принимает testing/docs batch для scoped commit; E1 acceptance ещё требует fresh epic_qa.
+
+- T7 dispatcher fixture repair принят: проверяется зарегистрированный generic callback и callable named handler; connector/persistence/privacy assertions неизменны. PHP/diff checks pass; scenario SHA `2ac92c67`, writer остановлен. Повторная полная Stream matrix следует на этой границе.
+
+- T7 first runtime: `bash dev/tests/run.sh php74-wp50`, WP5.0/PHP7.4.33, exit1 (~35s). Весь прежний набор и Stream absent fallback pass; `real connector callback missing` failed. Root сверил Stream4 register(): hook привязан к общему `callback`, который dispatches именованный метод; fixture ошибочно ожидал прямую регистрацию. Fresh tests-only repair исправляет это ожидание, exact persistence/privacy assertions сохраняются. Следующие targets не запускались, cleanup/status/six hashes unchanged.
+
+- T7 CI repair принят: каждый из4shell scripts проверяется отдельной командой, failure propagation сохранён. Все4local syntax commands и diff-check pass. Writer остановлен; fresh test_monitor запускает три version targets с реальной Stream phase. Remote CI по-прежнему не запускался.
+
+- T7 Stream implementation review: pinned official4.0.0 download сверяется с root lock и пишет только disposable volume; MU preloader блокирует посторонние записи и очищает actor/IP/meta до сохранения. Fixtures проверяют fallback, connector, deferred/immediate persistence и custom override. Product не менялся; PR draft подготовлен с runtime/QA pending. Перед runtime fresh CI repair: `sh/bash -n` с несколькими путями проверяет только первый script, поэтому каждый файл должен запускаться отдельно с failure propagation.
+
+- T6 доставлена локальным коммитом `69f529e`; T6 completed. T7 in_progress: fresh worker добавляет изолированную проверку реального Stream4.0.0 и draft PR; затем test_monitor и fresh epic_qa. E1 ещё не закрыт, E2 implementation ещё не начата.
 
 - T6 final runtime gate PASS: уже пройденный `php74-wp50` дополнен `bash dev/tests/run.sh php74-wp68` exit0 (~26s) и `php82-wp68` exit0 (~34s). Итого все3version targets прошли по9constantprofiles: boolean pairs, integer strings/zero, decimal minimum, actual registration/reset, cron, conflicting saved options и точная Carbon UI indication; полный ordinary/MU/network regression pass. PHP versions7.4.33/8.2.33, WP5.0/6.8. Runtime warnings отсутствуют; четыре frozen hashes/status неизменны, cleanup выполнен, новых artifacts нет. Root принимает T6 для scoped commit; следующий batch T7 Stream fixture и затем независимый E1 QA.
 
