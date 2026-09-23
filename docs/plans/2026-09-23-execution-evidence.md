@@ -1,5 +1,7 @@
 # Safety Passwords — execution evidence
 
+Release cutoff (2026-09-23): this inherited record includes historical E2 planning language. The authoritative 1.4.3 candidate boundary and verification results are in `2026-09-23-release-candidate.md`; deferred E2 work is preserved separately on `delivery/issues-lifecycle-expiry` at `f8395575790cf733354bc7ca31e9328ee6664df0`.
+
 ## Authority and revision boundary
 
 - Для текущего поручения итоговый отчёт объединяет результаты прерванной и продолжающей её работы, без упоминания восстановления. Это уточнение относится только к этому продолжению, не задаёт правило отчётности для будущих сессий.
@@ -11,7 +13,7 @@
 
 ## Active batch
 
-- T7 review: final network/cron/CLI privacy repair passed the complete three-target runtime matrix without warnings. Root accepts the implementation for scoped local commits and independent E1 QA. E2 waits for that gate; no technical exception accepted.
+- Release 1.4.3 preparation completed locally: accepted E1 at `80c1a69` plus only WP7/PHP8 platform adaptation, version and documentation. Exact-candidate WP7.1.2/PHP8.5.10, WP7.1.2/PHP8.2.33 and WP5.0/PHP7.4.33 gates all pass; independent focused QA returned pass_with_notes. The owner cut all E2/#10 from this release and deferred fresh WP6.8 reruns; prior E1 evidence remains. Product/test boundary stayed frozen; root updated only delivery status after verification. External CI, merge and publication remain separate.
 - Settled decisions: current-network scope, one main-site cron, two bulk modes excluding initiator. Owner explicitly chose enforced next-login reset for all rp_pre_inited paths, including registration/reminders, while preserving existing sessions; no product question is pending.
 
 | Accepted task | Local commit | Decisive evidence |

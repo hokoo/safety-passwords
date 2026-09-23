@@ -2,10 +2,12 @@
 set -Eeuo pipefail
 
 case "${1:-}" in
+  php85-wp712) SP_TEST_CLI_IMAGE=wordpress:cli-php8.5; wp_version=7.1.2 ;;
+  php82-wp712) SP_TEST_CLI_IMAGE=wordpress:cli-php8.2; wp_version=7.1.2 ;;
   php74-wp50) SP_TEST_CLI_IMAGE=wordpress:cli-php7.4; wp_version=5.0 ;;
   php74-wp68) SP_TEST_CLI_IMAGE=wordpress:cli-php7.4; wp_version=6.8 ;;
   php82-wp68) SP_TEST_CLI_IMAGE=wordpress:cli-php8.2; wp_version=6.8 ;;
-  *) echo 'Usage: bash dev/tests/run.sh {php74-wp50|php74-wp68|php82-wp68}' >&2; exit 2 ;;
+  *) echo 'Usage: bash dev/tests/run.sh {php85-wp712|php82-wp712|php74-wp50|php74-wp68|php82-wp68}' >&2; exit 2 ;;
 esac
 
 SP_TEST_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)

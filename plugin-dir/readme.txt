@@ -3,9 +3,9 @@ Contributors: hokku
 Tags: user passwords,secure passwords,enforce secure passwords,force secure passwords,secure password validation
 Donate link: https://www.paypal.me/igortron
 Requires at least: 5.0
-Tested up to: 6.8
+Tested up to: 7.1.2
 Requires PHP: 7.4
-Stable tag: 1.4.2
+Stable tag: 1.4.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,7 +51,7 @@ Integrations with other plugins:
 
 Plugin development is on the [GitHub](https://github.com/hokoo/safety-passwords).
 
-For contributor testing, see the isolated WordPress integration check commands in the repository's `readme.md`. They cover cron, lifecycle, settings and real Stream 4.0.0 integration across the documented PHP and WordPress test targets. The runner downloads Stream into a disposable WordPress volume and sanitizes its test records before storage.
+For contributor testing, see the isolated WordPress integration check commands in the repository's `readme.md`. They cover cron, lifecycle, settings and real Stream 4.0.0 integration across the documented PHP and WordPress test targets. WordPress 7.1.2 on PHP 8.5 and 8.2 is the primary tested matrix. WordPress 5.0 and PHP 7.4 remain supported and tested, but WordPress 5 is deprecated for future development. The runner downloads Stream into a disposable WordPress volume and sanitizes its test records before storage.
 
 == Screenshots ==
 1. Settings page
@@ -76,6 +76,11 @@ To remove a must-use installation, remove the loader and then deactivate any ord
 
 
 == Changelog ==
+= 1.4.3 =
+* Complete ordinary and must-use activation setup, current-network policy and scheduling, and isolated WordPress integration coverage.
+* Correct password expiry notices, repeated reset handling, constant overrides, and privacy-safe logging.
+* Test WordPress 7.1.2 with PHP 8.5 and 8.2; retain PHP 7.4 and WordPress 5 compatibility.
+
 = 1.4.2 =
 * Dependencies updated.
 

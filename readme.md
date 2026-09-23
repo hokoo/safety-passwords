@@ -48,16 +48,20 @@ To remove an MU installation, remove its loader, deactivate any separately activ
 
 ## Isolated WordPress integration checks
 
-Install only the plugin dependencies first, then run the same command used by CI:
+The local 1.4.3 candidate contains the accepted lifecycle, expiry, constants, logging, and integration work. Bulk reset controls and enforced next-login behavior are deferred to a separate E2 delivery; see `docs/plans/2026-09-23-release-candidate.md` for the exact cutoff and pending gates.
+
+Install only the plugin dependencies first, then run the same targets used by CI. WordPress 7.1.2 on PHP 8.5 and 8.2 is the primary tested matrix. WordPress 5.0 and PHP 7.4 remain supported and tested, but WordPress 5 is deprecated for future development. The plugin readme's `Tested up to` value is 7.1.2.
 
 ```bash
 cd plugin-dir && composer install --no-scripts && cd ..
+bash dev/tests/run.sh php85-wp712
+bash dev/tests/run.sh php82-wp712
 bash dev/tests/run.sh php74-wp50
 bash dev/tests/run.sh php74-wp68
 bash dev/tests/run.sh php82-wp68
 ```
 
-Run a target twice to confirm repeatability. The targets cover PHP 7.4 with WordPress 5.0 and 6.8, and PHP 8.2 with WordPress 6.8. Each run creates its own Compose project, database and WordPress volume, then removes that project on exit. It does not use the development `.env`, `wp-config.php`, database, or `dev/setup.sh`. Only the download container has internet access; it fetches WordPress core and the Composer lock-pinned official Stream 4.0.0 archive into the disposable site volume. The WordPress test container and database are on a private internal network. The test MU plugin intercepts all mail before WordPress loads its mail function. The runner rejects nonlocal Docker targets and refuses to reuse an existing test project. Do not run it against a real WordPress installation.
+Run a target twice to confirm repeatability. The new targets pin WordPress core to 7.1.2 and use the official CLI images for PHP 8.5 and 8.2. The existing targets retain PHP 7.4 with WordPress 5.0 and 6.8, and PHP 8.2 with WordPress 6.8. Each run creates its own Compose project, database and WordPress volume, then removes that project on exit. It does not use the development `.env`, `wp-config.php`, database, or `dev/setup.sh`. Only the download container has internet access; it fetches WordPress core and the Composer lock-pinned official Stream 4.0.0 archive into the disposable site volume. The WordPress test container and database are on a private internal network. The test MU plugin intercepts all mail before WordPress loads its mail function. The runner rejects nonlocal Docker targets and refuses to reuse an existing test project. Do not run it against a real WordPress installation.
 
 The runner selects two `/24` subnets from `10.254.0.0/16` after inspecting existing Docker networks and local IPv4 routes and interfaces. It refuses to create a target if that inspection fails or fewer than two free subnets remain.
 

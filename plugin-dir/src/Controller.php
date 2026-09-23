@@ -186,7 +186,7 @@ class Controller {
 		return $errors;
 	}
 
-	public static function is_password_secure( $i, WP_User $user, WP_Error &$errors = null ): bool {
+	public static function is_password_secure( $i, WP_User $user, ?WP_Error &$errors = null ): bool {
 		$length      = strlen( $i ) >= Settings::getOption( 'min_len' );
 		$has_lower   = preg_match( '/[a-z]/', $i );
 		$has_upper   = preg_match( '/[A-Z]/', $i );

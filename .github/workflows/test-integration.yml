@@ -15,6 +15,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - target: php85-wp712
+            php: '8.5'
+          - target: php82-wp712
+            php: '8.2'
           - target: php74-wp50
             php: '7.4'
           - target: php74-wp68
