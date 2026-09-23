@@ -26,6 +26,11 @@ class Settings {
 
 	public static function createOptions(): void {
 		$option_page = Container::make( OPTIONS_MODE, 'Safety Passwords' );
+		if ( is_multisite() ) {
+			// Carbon defaults network containers to SITE_ID_CURRENT_SITE, which can
+			// differ from the network handling this request in a multi-network install.
+			$option_page->get_datastore()->set_object_id( get_current_network_id() );
+		}
 		$settings    = [];
 		// Force Password Reset after registration
 		if ( ! self::isOverloaded( 'rp_on_registration' ) ) {
@@ -111,7 +116,7 @@ class Settings {
 		}
 		if ( is_multisite() ) {
 			// Network settings may be updated from any site context; avoid stale site-local cache entries.
-			return carbon_get_the_network_option( self::$optionPrefix . $optionSlug );
+			return carbon_get_network_option( get_current_network_id(), self::$optionPrefix . $optionSlug );
 		}
 
 		// Carbon Fields does not have a built-in caching mechanism, lol.

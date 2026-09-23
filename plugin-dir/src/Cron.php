@@ -8,12 +8,12 @@ class Cron {
 	public static function stopEvent(): void {
 		if ( is_multisite() ) {
 			self::forEachNetworkSite( function () {
-				wp_clear_scheduled_hook( self::EVENT_NAME );
+				self::unscheduleCurrentSiteEvents();
 			} );
 			return;
 		}
 
-		wp_clear_scheduled_hook( self::EVENT_NAME );
+		self::unscheduleCurrentSiteEvents();
 	}
 
 	public static function ensureEvent( bool $reset = false ): void {
@@ -21,7 +21,7 @@ class Cron {
 			$main_site_id = (int) get_network()->site_id;
 			self::forEachNetworkSite( function ( $site_id ) use ( $main_site_id, $reset ) {
 				if ( $site_id !== $main_site_id ) {
-					wp_clear_scheduled_hook( self::EVENT_NAME );
+					self::unscheduleCurrentSiteEvents();
 					return;
 				}
 				self::ensureCurrentSiteEvent( $reset );
@@ -41,7 +41,8 @@ class Cron {
 		}
 
 		if ( $reset || $count > 1 || ( $count && 'twicedaily' !== wp_get_schedule( self::EVENT_NAME ) ) ) {
-			wp_clear_scheduled_hook( self::EVENT_NAME );
+			// Clear every argument variant, including legacy events with arguments.
+			self::unscheduleCurrentSiteEvents();
 			$count = 0;
 		}
 
@@ -49,6 +50,15 @@ class Cron {
 			// Avoid the first run to be immediate.
 			wp_schedule_event( time() + 5 * MINUTE_IN_SECONDS, 'twicedaily', self::EVENT_NAME );
 		}
+	}
+
+	private static function unscheduleCurrentSiteEvents(): void {
+		// WordPress 5.0 warns when wp_unschedule_hook() receives an empty cron array.
+		if ( ! _get_cron_array() ) {
+			return;
+		}
+
+		wp_unschedule_hook( self::EVENT_NAME );
 	}
 
 	private static function forEachNetworkSite( callable $callback ): void {

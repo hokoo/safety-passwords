@@ -94,3 +94,11 @@ wp --url=http://integration.invalid --user=integration-admin eval-file /test-fix
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-mu-lifecycle.php repeat
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-boundaries.php prepare
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-boundaries.php verify
+# WordPress pins every request to network 1 while both generated constants exist.
+# Remove them only in this disposable config so each --url starts a real network bootstrap.
+wp config delete DOMAIN_CURRENT_SITE --quiet
+wp config delete PATH_CURRENT_SITE --quiet
+wp --url=http://sp-second-network.example.invalid/ --user=integration-admin eval-file /test-fixtures/network-boundaries-reverse.php second
+wp --url=http://sp-second-network.example.invalid/boundary-subsite/ eval-file /test-fixtures/network-boundaries-reverse.php subsite
+wp --url=http://sp-second-network.example.invalid/ eval-file /test-fixtures/network-boundaries-reverse.php second-reset
+wp --url=http://integration.invalid eval-file /test-fixtures/network-boundaries-reverse.php finish

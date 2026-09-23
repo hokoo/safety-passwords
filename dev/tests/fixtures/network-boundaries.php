@@ -42,13 +42,13 @@ function sp_boundary_event_count() {
 
 sp_boundary_assert( DB_HOST === 'db' && DB_NAME === 'safety_passwords_integration', 'unsafe database target' );
 sp_boundary_assert( is_multisite() && get_option( 'safety_passwords_integration_target' ) === 'isolated', 'unsafe network target' );
-sp_boundary_assert( get_current_network_id() === 1 && get_current_blog_id() === (int) get_network()->site_id, 'first-network main site context missing' );
 sp_boundary_assert( class_exists( Controller::class ) && class_exists( Cron::class ), 'plugin unavailable' );
 $stage = $args[0] ?? '';
 $second_network_id = 2;
 $second_domain = 'sp-second-network.example.invalid';
 $sentinel_args = [ 'network-boundary-sentinel' ];
-$kinds = [ 'current', 'other', 'shared', 'inactive', 'unassigned' ];
+$kinds = [ 'current', 'other', 'shared', 'inactive', 'inactive-second', 'unassigned' ];
+sp_boundary_assert( get_current_network_id() === 1 && get_current_blog_id() === (int) get_network()->site_id, 'first-network main site request did not resolve natively' );
 
 if ( 'prepare' === $stage ) {
 	sp_boundary_assert( ! get_network( $second_network_id ), 'second network already exists' );
@@ -67,6 +67,17 @@ if ( 'prepare' === $stage ) {
 	sp_boundary_assert( is_int( $second_site ) && $second_site > 0, 'second-network site creation' );
 	update_network_option( $second_network_id, 'main_site', $second_site );
 	sp_boundary_assert( (int) get_network( $second_network_id )->site_id === $second_site, 'second-network main site missing' );
+	$second_subsite = wpmu_create_blog( $second_domain, '/boundary-subsite/', 'Second Network Subsite', $ids['other'], [ 'public' => 0 ], $second_network_id );
+	sp_boundary_assert( is_int( $second_subsite ) && $second_subsite > 0, 'second-network subsite creation' );
+	switch_to_blog( $second_subsite );
+	update_option( 'safety_passwords_integration_target', 'isolated' );
+	restore_current_blog();
+	$second_inactive_site = wpmu_create_blog( $second_domain, '/boundary-inactive/', 'Second Inactive Member Site', $ids['other'], [ 'public' => 0 ], $second_network_id );
+	sp_boundary_assert( is_int( $second_inactive_site ) && $second_inactive_site > 0, 'second-network inactive site creation' );
+	add_user_to_blog( $second_inactive_site, $ids['inactive-second'], 'subscriber' );
+	foreach ( [ 'archived', 'spam', 'deleted' ] as $status ) {
+		update_blog_status( $second_inactive_site, $status, 1 );
+	}
 	add_user_to_blog( get_current_blog_id(), $ids['current'], 'subscriber' );
 	add_user_to_blog( get_current_blog_id(), $ids['shared'], 'subscriber' );
 	add_user_to_blog( $second_site, $ids['shared'], 'subscriber' );
@@ -80,8 +91,11 @@ if ( 'prepare' === $stage ) {
 	sp_boundary_assert( ! isset( sp_boundary_memberships( $ids['other'] )[1] ) && isset( sp_boundary_memberships( $ids['other'] )[2] ), 'other-only membership incorrect' );
 	sp_boundary_assert( isset( sp_boundary_memberships( $ids['shared'] )[1] ) && isset( sp_boundary_memberships( $ids['shared'] )[2] ), 'shared membership incorrect' );
 	sp_boundary_assert( isset( sp_boundary_memberships( $ids['inactive'] )[1] ) && get_blogs_of_user( $ids['inactive'] ) === [], 'inactive account membership incorrect' );
+	sp_boundary_assert( ! isset( sp_boundary_memberships( $ids['inactive-second'] )[1] ) && isset( sp_boundary_memberships( $ids['inactive-second'] )[2] ) && get_blogs_of_user( $ids['inactive-second'] ) === [], 'second inactive account membership incorrect' );
 	sp_boundary_assert( sp_boundary_memberships( $ids['unassigned'] ) === [], 'unassigned account has membership' );
 	switch_to_blog( $second_site );
+	update_option( 'safety_passwords_integration_target', 'isolated' );
+	carbon_set_network_option( $second_network_id, Settings::$optionPrefix . 'reset_interval', 3 );
 	$sentinel_timestamp = time() + 600;
 	wp_schedule_event( $sentinel_timestamp, 'twicedaily', Cron::EVENT_NAME, $sentinel_args );
 	sp_boundary_assert( wp_next_scheduled( Cron::EVENT_NAME, $sentinel_args ) === $sentinel_timestamp && wp_get_schedule( Cron::EVENT_NAME, $sentinel_args ) === 'twicedaily', 'second-network event scheduling' );
@@ -96,8 +110,8 @@ if ( 'prepare' === $stage ) {
 sp_boundary_assert( 'verify' === $stage, 'unknown stage' );
 sp_boundary_assert( get_network( $second_network_id ) && get_option( 'safety_passwords_mu_initialized' ), 'first-network MU completion did not finish' );
 $sites = get_sites( [ 'network_id' => $second_network_id, 'fields' => 'ids', 'number' => 0 ] );
-sp_boundary_assert( count( $sites ) === 1, 'second-network site missing' );
-$second_site = (int) $sites[0];
+sp_boundary_assert( count( $sites ) === 3, 'second-network sites missing' );
+$second_site = (int) get_network( $second_network_id )->site_id;
 $ids = [];
 foreach ( $kinds as $kind ) {
 	$user = get_user_by( 'login', 'sp-boundary-' . $kind );
@@ -116,7 +130,7 @@ foreach ( [ 'current', 'shared', 'inactive' ] as $kind ) {
 	$history = get_user_meta( $ids[ $kind ], Controller::USER_STOP_LIST_META_KEY, true );
 	$check( is_array( $history ) && count( $history ) === 1 && in_array( $user->user_pass, $history, true ), "$kind history omitted by MU completion" );
 }
-foreach ( [ 'other', 'unassigned' ] as $kind ) {
+foreach ( [ 'other', 'inactive-second', 'unassigned' ] as $kind ) {
 	$check( ! get_user_meta( $ids[ $kind ], Controller::USER_STOP_LIST_META_KEY, true ), "$kind history changed by first-network MU completion" );
 }
 switch_to_blog( $second_site );
@@ -152,7 +166,7 @@ foreach ( [ 'current', 'shared', 'inactive' ] as $kind ) {
 	$user = get_user_by( 'ID', $id );
 	$check( $user->user_pass !== $before[ $kind ]['password'] && get_user_meta( $id, $prefix . 'rp_inited', true ) === '1', "$kind account not reset by first-network callback" );
 }
-foreach ( [ 'other', 'unassigned' ] as $kind ) {
+foreach ( [ 'other', 'inactive-second', 'unassigned' ] as $kind ) {
 	$id = $ids[ $kind ];
 	$user = get_user_by( 'ID', $id );
 	$check(
@@ -174,10 +188,12 @@ if ( $failures ) {
 	}
 	exit( 1 );
 }
-if ( ! function_exists( 'wpmu_delete_user' ) ) {
-	require_once ABSPATH . 'wp-admin/includes/ms.php';
-}
+sp_boundary_assert( update_option( 'safety_passwords_integration_first_event', $first_event, false ), 'first-network event snapshot missing' );
 foreach ( $ids as $id ) {
-	sp_boundary_assert( wpmu_delete_user( $id ), 'synthetic account cleanup failed' );
+	// Every synthetic account is due under the second network's distinct policy.
+	// A wrong-scope reset must therefore be visible through its pending flag.
+	update_user_meta( $id, $prefix . 'last_reset', DAY_IN_SECONDS );
+	delete_user_meta( $id, $prefix . 'rp_inited' );
+	delete_user_meta( $id, $prefix . 'rp_pre_inited' );
 }
-echo "PASS: two-network MU history, account reset scope and scheduler isolation\n";
+echo "PASS: first-network MU history, reset scope and scheduler isolation; reverse request prepared\n";
