@@ -11,7 +11,12 @@ case "${1:-}" in
 esac
 
 SP_TEST_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
-export SP_TEST_ROOT SP_TEST_CLI_IMAGE
+SP_TEST_PLUGIN_SOURCE=${SP_TEST_PLUGIN_SOURCE:-$SP_TEST_ROOT/plugin-dir}
+if [[ ! -d "$SP_TEST_PLUGIN_SOURCE" || -L "$SP_TEST_PLUGIN_SOURCE" || "$SP_TEST_PLUGIN_SOURCE" != /* ]]; then
+  echo 'Plugin test source must be an absolute, real directory.' >&2
+  exit 2
+fi
+export SP_TEST_ROOT SP_TEST_CLI_IMAGE SP_TEST_PLUGIN_SOURCE
 compose_file="$SP_TEST_ROOT/dev/tests/compose.yml"
 
 # The runner must never use a remote Docker daemon or the development Compose project.
@@ -27,7 +32,7 @@ if [[ "$context_host" != unix://* ]]; then
   echo 'Refusing a nonlocal Docker context before provisioning.' >&2
   exit 2
 fi
-if [[ ! -f "$SP_TEST_ROOT/plugin-dir/vendor/autoload.php" ]]; then
+if [[ ! -f "$SP_TEST_PLUGIN_SOURCE/vendor/autoload.php" ]]; then
   echo 'Plugin dependencies are missing; install only plugin-dir dependencies first.' >&2
   exit 2
 fi

@@ -30,9 +30,10 @@ Notes/Risks: prerelease packages are allowed only as prereleases and never autho
 
 ### R2b. Automatic release delivery and retry behavior
 
-Status: ready
+Status: completed
 Goal: stable release publication automatically delivers the verified artifact to WordPress.org.
 Scope: replace existing release workflow, focused publish/SVN/mirror helpers, PR build validation, operational instructions and failure/retry verification.
+Implementation boundary: reuse the five-target integration matrix through `workflow_call`, testing the validated release ZIP through a minimal read-only source-directory override. Transfer the artifact by ID and verify its independently passed digest. Avoid a second matrix or separate CI-status polling subsystem. Root owns this plan; the worker owns workflow/helper/test/runbook changes.
 Out of Scope: actual public release, secrets/configuration writes, deferred E2, new tag-triggered release creation.
 DoR: accepted R2a package/manifest interface.
 DoD: workflow/static validation; isolated local-SVN and mocked GitHub/mirror success/failure/retry scenarios; credentialless public SVN dry-run if reachable; independent QA follows.
@@ -42,7 +43,7 @@ Notes/Risks: WPORG_USERNAME/WPORG_PASSWORD names exist; values/authentication va
 
 ### R3. Independent QA and update PR #21
 
-Status: waiting_dependency
+Status: in_progress
 Goal: deliver the verified 1.5 automation for review.
 Scope: independent release/security QA, actual check evidence, scoped commits/push and PR title/body update.
 Out of Scope: merge, release creation, WordPress.org publication or issue closure.
@@ -54,6 +55,13 @@ Notes/Risks: remote CI may require a bounded repair; no automatic waiver.
 
 ## Evidence
 
+- R3 sequencing: commit the locally verified frozen R2b diff and update the authorized PR branch so real GitHub CI can run while independent read-only QA reviews the same file hashes. Final acceptance waits for both the independent gate and actual remote matrix; pushing for review does not authorize publication.
+- R2b runtime accepted: the same validated tagged ZIP passed `SP_TEST_PLUGIN_SOURCE=/tmp/sp-r2b-extracted.443PY6/safety-passwords bash dev/tests/run.sh php85-wp712` in 66.90s (actual WordPress 7.1.2 / PHP 8.5.10), including lifecycle, expiry, MU, two-network, Stream and CLI scenarios, with no observed warning flag. This package uses committed plugin source `3aeea53`; the frozen uncommitted plugin readme procedure edit is documentation only. The final pushed revision still requires the real five-target artifact-based CI. Independent R3 QA follows; no actual publication or credential validity has been tested.
+- R2b delivery repair passed on the retained tagged package: temporary Git staging now preserves exact CRLF bytes and includes all validated files; the fixture also strips the saved revision before passing it to Git. `check_delivery.py` passed in 7.36s, covering mocked GitHub partial upload/retry/mismatch, actual local mirror exact tree/retry/mismatch/downgrade, and local SVN dry-run/new commit/retry/mismatch/downgrade/asset preservation. Credentialless official SVN dry-run passed in 8.27s. No public commit occurred. The extracted-package WordPress gate remains in progress.
+- R2b first runtime gate on `3aeea53`: static checks, tagged source verification, isolated build, validation and package negatives passed. Tagged ZIP SHA-256 `b84a75a75b557e15a2101851569d15bff49d683c268ed3ddb46446daba59283f` is retained under `/tmp/sp-r2b-package.7NaYAg` (266 entries / 1,869,034 bytes). Delivery checks passed mocked GitHub partial-upload/retry checks, then failed with `existing_mirror_version_mismatch`; one authorized diagnostic repeat recovered that fixed category after output filtering had discarded it. All frozen hashes stayed unchanged. Public SVN dry-run and WordPress checks did not start. A bounded mirror/fixture repair is in progress.
+- R2b implementation frozen on the `3aeea53` base: release workflow, reusable artifact-based matrix, narrow SVN/GitHub/mirror helpers, local delivery fixtures, source-directory override and both readmes. Root review required two bounded fixes before runtime: correct artifact-ID extraction path and wiring version-independent delivery checks into CI. Static actionlint, YAML, Python AST, shell and diff checks passed. Monitor now owns the serial package/delivery/public-dry-run/primary-WordPress gate; no external publication is authorized.
+- Public SVN prerequisite passed without credentials: bounded `svn ls` found `assets/`, `tags/` and `trunk/`; bounded `svn cat` reported public trunk `Stable tag: 1.4.2`. Both exited 0, with no repository mutation or publication. This establishes endpoint access only; the new helper's dry-run remains required.
+- R2a revision boundary: `3aeea53` contains the reviewed package helpers, focused tests and contributor instructions. Python bytecode caches generated during verification remain local and uncommitted; R2b may add a narrow ignore rule. R2b started in the authorized reused worker thread, with publication explicitly excluded.
 - R2a accepted after repair on `9debab3`: source verification, two isolated production builds, both validations, ZIP and manifest byte comparisons, and `check_package.py` negative/local-publication-ref scenarios all passed. Both ZIPs contain 266 entries / 1,869,039 bytes, SHA-256 `59413cd6188c4d21339811c63d506d31af51961ad857c3b3c56e3fcee41eba98`; artifacts remain in `/tmp/sp-release-a.yn6Iqa` and `/tmp/sp-release-b.dBDT2Q`. Composer's random autoloader suffix was replaced only in temporary staging with a source-derived value. Frozen files, HEAD and working-tree paths stayed unchanged during verification. The initial escalation timed out before process creation; read-only verification then passed in the default sandbox. No publication occurred. R2b is now ready.
 - R2a first runtime ladder on `9debab3`: source verification, build A, validation A and build B passed; byte comparison failed (266 entries in each archive, differing ZIP hashes). Manifest comparison and negative scenarios did not run after that failure. Four frozen helper/readme hashes and status stayed unchanged. Temporary archives are retained under `/tmp/sp-release-a.6ICERu` and `/tmp/sp-release-b.bLhBIA` for a bounded reproducibility repair; no publication or workspace dependency mutation occurred.
 - Official actionlint v1.7.12 archive checksum was verified and its binary reported 1.7.12 at `/tmp/safety-passwords-actionlint.3Dqak6/actionlint`. This is tool readiness only, not workflow validation. Verified archive SHA-256: `8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8`.

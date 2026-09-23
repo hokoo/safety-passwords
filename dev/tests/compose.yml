@@ -23,7 +23,7 @@ services:
         condition: service_healthy
     volumes:
       - site:/var/www/html
-      - ${SP_TEST_ROOT:?Repository path required}/plugin-dir:/plugin-source:ro
+      - ${SP_TEST_PLUGIN_SOURCE:?Plugin source path required}:/plugin-source:ro
       - ${SP_TEST_ROOT:?Repository path required}/dev/tests/fixtures:/test-fixtures:ro
       - ${SP_TEST_ROOT:?Repository path required}/dev/tests/php-memory.ini:/usr/local/etc/php/conf.d/zz-safety-passwords-test-memory.ini:ro
     networks:

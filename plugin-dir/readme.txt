@@ -51,7 +51,7 @@ Integrations with other plugins:
 
 Plugin development is on the [GitHub](https://github.com/hokoo/safety-passwords).
 
-For contributor testing, see the isolated WordPress integration check commands in the repository's `readme.md`. They cover cron, lifecycle, settings and real Stream 4.0.0 integration across the documented PHP and WordPress test targets. WordPress 7.1.2 on PHP 8.5 and 8.2 is the primary tested matrix. WordPress 5.0 and PHP 7.4 remain supported and tested, but WordPress 5 is deprecated for future development. The runner downloads Stream into a disposable WordPress volume and sanitizes its test records before storage.
+For contributor testing and the prepared release procedure, see the repository's `readme.md`. The isolated checks cover cron, lifecycle, settings and real Stream 4.0.0 integration across the documented PHP and WordPress test targets. WordPress 7.1.2 on PHP 8.5 and 8.2 is the primary tested matrix. WordPress 5.0 and PHP 7.4 remain supported and tested, but WordPress 5 is deprecated for future development. The runner downloads Stream into a disposable WordPress volume and sanitizes its test records before storage. Release publication is separate from this local candidate.
 
 == Screenshots ==
 1. Settings page

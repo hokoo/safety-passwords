@@ -1,5 +1,7 @@
 /vendor/
 /plugin-dir/vendor/
+/dev/release/__pycache__/
+/dev/release/tests/__pycache__/
 /wordpress/
 /wp-content/
 /index.php
