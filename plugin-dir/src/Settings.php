@@ -26,6 +26,11 @@ class Settings {
 
 	public static function createOptions(): void {
 		$option_page = Container::make( OPTIONS_MODE, 'Safety Passwords' );
+		if ( is_multisite() ) {
+			// Carbon defaults network containers to SITE_ID_CURRENT_SITE, which can
+			// differ from the network handling this request in a multi-network install.
+			$option_page->get_datastore()->set_object_id( get_current_network_id() );
+		}
 		$settings    = [];
 		// Force Password Reset after registration
 		if ( ! self::isOverloaded( 'rp_on_registration' ) ) {
@@ -35,7 +40,7 @@ class Settings {
 		} else {
 			$value      = self::getOverloaded( 'rp_on_registration' ) ? __('Enabled', 'safety-passwords' ) : __( 'Disabled', 'safety-passwords' );
 			$settings[] = Field::make( 'html', self::$optionPrefix . 'rp_on_registration_disabled' )
-			                   ->set_html( "[$value]". __( "<b>Change After Registration</b> Overwritten by constant<br/><small><i>Force users to change their password after registration</i></small>", 'safety-passwords' ) );
+			                   ->set_html( '[' . esc_html( $value ) . ']' . __( "<b>Change After Registration</b> Overwritten by constant<br/><small><i>Force users to change their password after registration</i></small>", 'safety-passwords' ) );
 		}
 
 		if ( ! self::isOverloaded( 'min_len' ) ) {
@@ -48,7 +53,7 @@ class Settings {
 		} else {
 			$value      = self::getOverloaded( 'min_len' ) ;
 			$settings[] = Field::make( 'html', self::$optionPrefix . 'min_len_disabled' )
-			                   ->set_html( "[$value]" . __( "<b>Password's minimum length</b> Overwritten by constant<br/>", 'safety-passwords' ) );
+			                   ->set_html( '[' . esc_html( (string) $value ) . ']' . __( "<b>Password's minimum length</b> Overwritten by constant<br/>", 'safety-passwords' ) );
 		}
 
 		if ( ! self::isOverloaded( 'reset_interval' ) ) {
@@ -62,13 +67,17 @@ class Settings {
 		} else {
 			$value      = self::getOverloaded( 'reset_interval' ) ;
 			$settings[] = Field::make( 'html', self::$optionPrefix . 'reset_interval_disabled' )
-			                   ->set_html( "[$value]" . __( "<b>Force Password Reset Interval (days)</b> Overwritten by constant<br/>", 'safety-passwords' ) );
+			                   ->set_html( '[' . esc_html( (string) $value ) . ']' . __( "<b>Force Password Reset Interval (days)</b> Overwritten by constant<br/>", 'safety-passwords' ) );
 		}
 
 
 		$option_page->add_fields( $settings )
 		            ->set_icon( 'dashicons-superhero' )
 		            ->where( 'current_user_capability', 'IN', [ self::MANAGE_CAPS, 'manage_options' ] );
+		if ( is_multisite() ) {
+			// Carbon evaluates these conditions for both page attachment and saving.
+			$option_page->where( 'current_user_capability', '=', 'manage_network_options' );
+		}
 	}
 
 	private static function isOverloaded( $optionSlug ): bool {
@@ -76,7 +85,22 @@ class Settings {
 	}
 
 	private static function getOverloaded( $optionSlug ) {
-		return constant( 'SAFETY_PASSWORDS_' . strtoupper( $optionSlug ) );
+		$value = constant( 'SAFETY_PASSWORDS_' . strtoupper( $optionSlug ) );
+		if ( 'rp_on_registration' === $optionSlug ) {
+			return wp_validate_boolean( $value );
+		}
+
+		if ( in_array( $optionSlug, [ 'min_len', 'reset_interval' ], true ) && is_string( $value )
+			&& preg_match( '/^([+-]?)([0-9]+)$/D', $value, $matches ) ) {
+			$digits = ltrim( $matches[2], '0' );
+			$normalized = ( '-' === $matches[1] && '' !== $digits ? '-' : '' ) . ( '' === $digits ? '0' : $digits );
+			$integer = filter_var( $normalized, FILTER_VALIDATE_INT );
+			if ( false !== $integer ) {
+				return $integer;
+			}
+		}
+
+		return $value;
 	}
 
 	/**
@@ -89,6 +113,10 @@ class Settings {
 	public static function getOption( string $optionSlug ) {
 		if ( self::isOverloaded( $optionSlug ) ) {
 			return self::getOverloaded( $optionSlug );
+		}
+		if ( is_multisite() ) {
+			// Network settings may be updated from any site context; avoid stale site-local cache entries.
+			return carbon_get_network_option( get_current_network_id(), self::$optionPrefix . $optionSlug );
 		}
 
 		// Carbon Fields does not have a built-in caching mechanism, lol.

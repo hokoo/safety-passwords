@@ -23,10 +23,9 @@ msgstr ""
 "X-Poedit-SearchPathExcluded-0: *.min.js\n"
 "X-Poedit-SearchPathExcluded-1: vendor\n"
 
-#: src/Controller.php:68
-#, php-format
-msgid "Failed to retrieve password for user %s"
-msgstr "Не удалось восстановить пароль для пользователя %s"
+#: src/Controller.php:67
+msgid "Failed to initiate a password reset at login."
+msgstr "Не удалось начать сброс пароля при входе."
 
 #: src/Controller.php:208
 #, php-format
@@ -80,10 +79,9 @@ msgstr ""
 "ничего страшного.%3$sПожалуйста, сделайте это сейчас, перейдя по следующей "
 "ссылке: <%2$s>"
 
-#: src/Controller.php:321
-#, php-format
-msgid "Failed to reset password for user %s"
-msgstr "Не удалось сбросить пароль для пользователя %s"
+#: src/Controller.php:364
+msgid "Failed to send a periodic password reset request."
+msgstr "Не удалось отправить запрос на периодический сброс пароля."
 
 #: src/Controller.php:346
 msgid ""
@@ -94,19 +92,27 @@ msgstr ""
 "инструкциям в отправленном вам электронном письме."
 
 #. translators: %s: days
-#: src/General.php:112
+#: src/General.php:132
 #, php-format
 msgid "Change password in %s days"
 msgstr "Смените пароль не позднее %s д."
 
+#: src/General.php:126 src/General.php:159
+msgid "Password reset is required. Use the password recovery form."
+msgstr "Требуется сбросить пароль. Воспользуйтесь формой восстановления пароля."
+
+#: src/General.php:128 src/General.php:162
+msgid "Password change is due. Change your password."
+msgstr "Срок смены пароля наступил. Смените пароль."
+
 #. translators: %s: days
-#: src/General.php:135
+#: src/General.php:167
 #, php-format
 msgid "Next password change in %s days."
 msgstr "Смена пароля через %s дн."
 
 #. translators: %s: days
-#: src/General.php:142
+#: src/General.php:174
 #, php-format
 msgid "Please, change your password in %s days."
 msgstr "Пожалуйста, смените пароль в течение %s дн."

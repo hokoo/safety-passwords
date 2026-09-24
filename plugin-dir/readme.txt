@@ -3,9 +3,9 @@ Contributors: hokku
 Tags: user passwords,secure passwords,enforce secure passwords,force secure passwords,secure password validation
 Donate link: https://www.paypal.me/igortron
 Requires at least: 5.0
-Tested up to: 6.8
+Tested up to: 7.1.2
 Requires PHP: 7.4
-Stable tag: 1.4.2
+Stable tag: 1.5
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -25,17 +25,35 @@ The minimum length of the password is defined by the plugin's settings.
 
 You can also define the period of time after which the user will be forced to change his password.
 
-The important feature of the plugin is settings defining by means of PHP constants.
+After the period expires, the periodic check starts a mandatory reset and attempts to send one recovery email. Later checks leave that reset pending, even if the email attempt fails. A successful password reset or profile password change clears the pending state and renews the period.
 
- * <code>SAFETY_PASSWORDS_MIN_LENGTH</code> - (int/string, number of symbols) the minimum length of the password;
- * <code>SAFETY_PASSWORDS_RESET_INTERVAL</code> - (int/string, days) the period of time after which the user will be forced to change his password;
- * <code>SAFETY_PASSWORDS_RP_ON_REGISTRATION</code> - (bool) whether enforce users to change their password after registration or not.
+With this plugin loaded, `wp user update` with a password and `wp user reset-password` also complete a pending reset, renew the period, and record the saved password in history. These administrative WP-CLI changes bypass both password strength and password reuse checks; a warning on stderr states this when a password is changed. Later changes through the web forms still check the history. WordPress passwords and this plugin's history are global to an account on multisite, including accounts without site membership. WP-CLI changes made before this version are not repaired automatically. Commands run with the plugin skipped cannot update its history or reset state.
+
+Background reset emails and silent reset links also work on WordPress 5.0 through 5.6, where the login-page recovery function is unavailable during periodic checks.
+
+Password reset logs contain fixed failure categories and aggregate periodic reset and reminder counts, without account identifiers or WordPress error details. The `wp safety check-users` command also logs only aggregate counts and still reports `Success: Done.` Older Stream records may contain details from previous plugin versions; assess them privately under your site's retention policy. This update does not remove them.
+
+On multisite, settings are shared across the current network and can be changed only by network administrators with `manage_network_options`. With one network, periodic and manual checks include all accounts, even those assigned to no site. With multiple networks, they include only accounts with a site membership in the current network, including membership on inactive sites; accounts assigned only to another network or to no site are excluded. An account shared by networks has one WordPress password, so a reset from either network affects that account everywhere. A single periodic event is kept on each network's main site, and older subsite events in that network are removed when scheduling or deactivating. Administrator roles on existing and new sites retain the plugin's settings capability.
+
+Your own profile shows a countdown before the period ends, and the admin bar adds a reminder during the final seven days. Once the period ends, they ask you to change your password without showing a countdown. If a password reset has already been initiated, they ask you to use the password recovery form. Setting the reset interval to 0 hides these reminders.
+
+PHP constants override saved settings and show their effective values on the settings page:
+
+| Constant | Supported values | Effect |
+| --- | --- | --- |
+| <code>SAFETY_PASSWORDS_MIN_LEN</code> | Integer or whole-number string; settings field accepts 1-24 | Minimum password length. |
+| <code>SAFETY_PASSWORDS_RESET_INTERVAL</code> | Integer or whole-number string; settings field accepts 0-999 | Days between required resets; 0 disables periodic resets and reminders. |
+| <code>SAFETY_PASSWORDS_RP_ON_REGISTRATION</code> | true, 'true', 1, '1'; false, 'false', 0, '0' | Enables or disables a reset after registration. |
+
+The plugin interprets the registration constant with WordPress's <code>wp_validate_boolean()</code>. Other strings, such as 'off' or 'no', evaluate to true. The numeric constants normalize whole-number strings without changing the existing settings ranges; decimal strings are not converted to integers.
 
 Integrations with other plugins:
 
  * The plugin has integration with the Stream plugin.
 
 Plugin development is on the [GitHub](https://github.com/hokoo/safety-passwords).
+
+For contributor testing and the prepared release procedure, see the repository's `readme.md`. The isolated checks cover cron, lifecycle, settings and real Stream 4.0.0 integration across the documented PHP and WordPress test targets. WordPress 7.1.2 on PHP 8.5 and 8.2 is the primary tested matrix. WordPress 5.0 and PHP 7.4 remain supported and tested, but WordPress 5 is deprecated for future development. The runner downloads Stream into a disposable WordPress volume and sanitizes its test records before storage. Release publication is separate from this local candidate.
 
 == Screenshots ==
 1. Settings page
@@ -50,8 +68,22 @@ Plugin development is on the [GitHub](https://github.com/hokoo/safety-passwords)
 1. Activate the plugin through the \'Plugins\' menu in WordPress
 2. Go to Safety Passwords settings page and configure the plugin.
 
+The plugin completes its initial password history and periodic reset setup on the next normal WordPress request after activation.
+
+When upgrading an existing ordinary installation to this network policy, reactivate the plugin once so the deferred phase seeds history for accounts in scope, refreshes site capabilities, and establishes the main-site schedule. Visiting settings alone only checks the schedule. An MU installation initializes automatically on its first request.
+
+For a must-use installation, keep the plugin directory in `/wp-content/plugins/safety-passwords/` and create a PHP loader directly in `/wp-content/mu-plugins/` that requires `/wp-content/plugins/safety-passwords/safety-passwords.php`. WordPress loads that root loader automatically; no Plugins-menu activation or settings-page visit is needed. After Carbon Fields is ready on the first request, the plugin seeds current password history, grants administrator capabilities, and schedules the periodic check. On multisite, it seeds accounts in scope and keeps one event on each network's main site. Later requests preserve the history and schedule. New sites receive the capability when created.
+
+To remove a must-use installation, remove the loader and then deactivate any ordinary copy if it is active. Deactivation clears scheduled events; simply deleting the MU loader cannot run a WordPress deactivation callback, so clear the `safety_passwords_periodically_reset` scheduled event on the main site (and any legacy subsite events) as part of removal. Removing the loader does not erase password history or settings. Before reinstalling a physically removed MU loader, delete the private `safety_passwords_mu_initialized` option on the main site so accounts added during its absence are included on the next request.
+
 
 == Changelog ==
+= 1.5 =
+* Complete ordinary and must-use activation setup, current-network policy and scheduling, and isolated WordPress integration coverage.
+* Correct password expiry notices, repeated reset handling, constant overrides, and privacy-safe logging.
+* Track standard WP-CLI password changes in history and expiry state, with an explicit strength and reuse bypass warning.
+* Test WordPress 7.1.2 with PHP 8.5 and 8.2; retain PHP 7.4 and WordPress 5 compatibility.
+
 = 1.4.2 =
 * Dependencies updated.
 

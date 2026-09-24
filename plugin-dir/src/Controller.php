@@ -63,16 +63,9 @@ class Controller {
 			if ( true !== $reset ) {
 				// Something went wrong when trying to init the password changing.
 				// We really don't know what it was. But it seems it's better to allow the user to log in.
-
-				/* Translators: %s - user login */
-				$msg = __( 'Failed to retrieve password for user %s', 'safety-passwords' );
-				if ( $reset instanceof WP_Error ) {
-					$msg .= ': ' . implode( '; ', $reset->get_error_messages() );
-				}
-
 				General::getLogger()->error(
-					sprintf( $msg, "{$user->user_login} [{$user->user_email}]" ),
-					[ 'user' => $user, 'error' => $reset ]
+					__( 'Failed to initiate a password reset at login.', 'safety-passwords' ),
+					[ 'category' => self::resetFailureCategory( $reset ) ]
 				);
 
 				return $redirect;
@@ -127,8 +120,9 @@ class Controller {
 			// Password is secure at this point, remove the flag.
 			// But we can't do it in the current context, because the password is not actually updated yet,
 			// and some hook handlers may return errors a bit later even if no errors now.
-			// So, the hook 'wp_update_user' is the best place to do it.
-			add_action( 'wp_update_user', function ( $user_id, $userdata ) use ( $user ) {
+			// WordPress 6.3 added wp_update_user; older versions fire profile_update after saving the user.
+			$update_hook = version_compare( get_bloginfo( 'version' ), '6.3', '<' ) ? 'profile_update' : 'wp_update_user';
+			add_action( $update_hook, function ( $user_id ) use ( $user ) {
 				// Reassure that the user is the same.
 				if ( $user_id !== $user->ID ) {
 					return;
@@ -141,7 +135,7 @@ class Controller {
 				// Add the password to the user's stop-list to prevent using it in the future.
 				self::addToStopList( $user->user_pass, get_user_by( 'ID', $user->ID ) ?: wp_get_current_user() );
 
-			}, 10, 2 );
+			}, 10, 1 );
 		}
 
 		return $errors;
@@ -192,7 +186,7 @@ class Controller {
 		return $errors;
 	}
 
-	public static function is_password_secure( $i, WP_User $user, WP_Error &$errors = null ): bool {
+	public static function is_password_secure( $i, WP_User $user, ?WP_Error &$errors = null ): bool {
 		$length      = strlen( $i ) >= Settings::getOption( 'min_len' );
 		$has_lower   = preg_match( '/[a-z]/', $i );
 		$has_upper   = preg_match( '/[A-Z]/', $i );
@@ -240,6 +234,10 @@ class Controller {
 	}
 
 	public static function findExpiringPasswords(): void {
+		if ( is_multisite() && get_current_blog_id() !== (int) get_network()->site_id ) {
+			return;
+		}
+
 		if ( ! Settings::getInterval() ) {
 			return;
 		}
@@ -257,7 +255,7 @@ class Controller {
 			count( $resetUsers ),
 			count( $preInitedUsers ),
 		);
-		General::getLogger()->info( $string, [ 'resetUsers' => $resetUsers, 'preInitedUsers' => $preInitedUsers ] );
+		General::getLogger()->info( $string, [ 'resetCount' => count( $resetUsers ), 'reminderCount' => count( $preInitedUsers ) ] );
 	}
 
 	public static function retrievePassword( WP_User $user, $skip_email = false, &$reset_key = '' ) {
@@ -282,14 +280,61 @@ class Controller {
 			);
 		}, 99, 4 );
 
+		// Before WordPress 5.7, retrieve_password() lived in wp-login.php and accepted no login argument.
+		if ( version_compare( get_bloginfo( 'version' ), '5.7', '<' ) ) {
+			return self::retrievePasswordLegacy( $user );
+		}
+
 		return retrieve_password( $user->user_login );
 	}
 
+	private static function retrievePasswordLegacy( WP_User $user ) {
+		$errors = new WP_Error();
+		$wp_version = get_bloginfo( 'version' );
+		if ( version_compare( $wp_version, '5.4', '<' ) ) {
+			do_action( 'lostpassword_post', $errors );
+		} else {
+			do_action( 'lostpassword_post', $errors, $user );
+		}
+		if ( version_compare( $wp_version, '5.5', '>=' ) ) {
+			$errors = apply_filters( 'lostpassword_errors', $errors, $user );
+		}
+		if ( $errors->get_error_codes() ) {
+			return $errors;
+		}
+
+		$key = get_password_reset_key( $user );
+		if ( is_wp_error( $key ) ) {
+			return $key;
+		}
+
+		$switched_locale = switch_to_locale( get_user_locale( $user ) );
+		$site_name = is_multisite() ? get_network()->site_name : wp_specialchars_decode( get_option( 'blogname' ), ENT_QUOTES );
+		$title = apply_filters( 'retrieve_password_title', sprintf( __( '[%s] Password Reset' ), $site_name ), $user->user_login, $user );
+		$message = __( 'Someone has requested a password reset for the following account:' ) . "\r\n\r\n";
+		$message .= sprintf( __( 'Site Name: %s' ), $site_name ) . "\r\n\r\n";
+		$message .= sprintf( __( 'Username: %s' ), $user->user_login ) . "\r\n\r\n";
+		$message .= __( 'If this was a mistake, ignore this email and nothing will happen.' ) . "\r\n\r\n";
+		$message .= __( 'To reset your password, visit the following address:' ) . "\r\n\r\n";
+		$message .= network_site_url( 'wp-login.php?login=' . rawurlencode( $user->user_login ) . "&key=$key&action=rp", 'login' ) . '&wp_lang=' . get_user_locale( $user ) . "\r\n\r\n";
+		$message = apply_filters( 'retrieve_password_message', $message, $key, $user->user_login, $user );
+
+		if ( $switched_locale ) {
+			restore_previous_locale();
+		}
+
+		if ( $message && ! wp_mail( $user->user_email, wp_specialchars_decode( $title ), $message ) ) {
+			return new WP_Error( 'retrieve_password_email_failure', __( 'The email could not be sent. Your site may not be correctly configured to send emails.' ) );
+		}
+
+		return true;
+	}
+
 	public static function checkUsers( &$resetUsers = [], &$preInitedUsers = [] ) {
-		$users = get_users( ['fields' => 'ids'] );
+		$users = UserScope::userIds();
 		foreach ( $users as $user_id ) {
-			if ( true === get_user_meta( $user_id, Settings::$optionPrefix . 'rp_inited', true ) ) {
-				// The user has already reset the password, skip.
+			if ( '1' === get_user_meta( $user_id, Settings::$optionPrefix . 'rp_inited', true ) ) {
+				// A mandatory reset is already pending for this user.
 				continue;
 			}
 
@@ -315,18 +360,10 @@ class Controller {
 				$reset = Controller::retrievePassword( $wp_user );
 
 				if ( true !== $reset ) {
-					// Something went wrong when trying to reset the password.
-					$msg = sprintf(
-						/* Translators: %s - user login and email */
-						__( "Failed to reset password for user %s", 'safety-passwords' ),
-						"{$wp_user->user_login} [{$wp_user->user_email}]"
+					General::getLogger()->error(
+						__( 'Failed to send a periodic password reset request.', 'safety-passwords' ),
+						[ 'category' => self::resetFailureCategory( $reset ) ]
 					);
-
-					if ( $reset instanceof WP_Error ) {
-						$msg .= ': ' . implode(  '; ', $reset->get_error_messages() );
-					}
-
-					General::getLogger()->error( $msg, [ 'user_id' => $user_id, 'error' => $reset ] );
 				}
 
 				$resetUsers[] = $user_id;
@@ -340,6 +377,14 @@ class Controller {
 				$preInitedUsers[] = $user_id;
 			}
 		}
+	}
+
+	private static function resetFailureCategory( $reset ): string {
+		if ( $reset instanceof WP_Error ) {
+			return in_array( 'retrieve_password_email_failure', $reset->get_error_codes(), true ) ? 'mail_delivery_failed' : 'reset_request_failed';
+		}
+
+		return 'unexpected_result';
 	}
 
 	public static function get_password_reset_message(): string {
@@ -362,7 +407,12 @@ class Controller {
 	}
 
 	private static function addToStopList( $password, WP_User $user, bool $isHash = false ): void {
-		if ( self::isPasswordInStopList( $password, $user ) ) {
+		if ( $isHash ) {
+			$existing = get_user_meta( $user->ID, self::USER_STOP_LIST_META_KEY, true );
+			if ( is_array( $existing ) && in_array( $password, $existing, true ) ) {
+				return;
+			}
+		} elseif ( self::isPasswordInStopList( $password, $user ) ) {
 			return;
 		}
 
@@ -375,8 +425,23 @@ class Controller {
 		update_user_meta( $user->ID, self::USER_STOP_LIST_META_KEY, $stopList );
 	}
 
+	/**
+	 * Complete a password change made by a supported administrative WP-CLI command.
+	 * The caller supplies WordPress hashes from before and after a successful write.
+	 */
+	public static function completeCliPasswordChange( WP_User $user, string $previous_hash, string $saved_hash ): void {
+		if ( '' !== $previous_hash ) {
+			self::addToStopList( $previous_hash, $user, true );
+		}
+		self::addToStopList( $saved_hash, $user, true );
+
+		update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
+		delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
+		delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited' );
+	}
+
 	public static function putCurrentPasswordsToStopList(): void {
-		$users = get_users( ['fields' => 'ids'] );
+		$users = UserScope::userIds();
 		foreach ( $users as $user_id ) {
 			$user = get_user_by( 'ID', $user_id );
 			if ( ! $user instanceof WP_User ) {

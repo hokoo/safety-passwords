@@ -4,6 +4,7 @@ namespace iTRON\SafetyPasswords;
 
 use Exception;
 use iTRON\SafetyPasswords\Integrations\CLI\Safety;
+use iTRON\SafetyPasswords\Integrations\CLI\PasswordChanges;
 use iTRON\SafetyPasswords\Integrations\StreamConnector;
 use iTRON\SafetyPasswords\Loggers\Stream;
 use Psr\Log\LoggerInterface;
@@ -35,11 +36,12 @@ class General {
 		Settings::init();
 		Controller::init();
 
-		defined( 'WP_CLI' ) && WP_CLI && WP_CLI::add_command( 'safety', Safety::class );
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			WP_CLI::add_command( 'safety', Safety::class );
+			PasswordChanges::init();
+		}
 
 		add_action( Cron::EVENT_NAME, [ Controller::class, 'findExpiringPasswords' ] );
-		add_action( 'itron/safety-passwords/activate', [ self::class, 'processSecondPhaseActivation' ] );
-		add_action( 'itron/safety-passwords/activate', [ Controller::class, 'putCurrentPasswordsToStopList' ], 20 );
 		add_action( 'admin_bar_menu', [ self::class, 'addAdminBarMenu' ], 60,1 );
 		add_action( 'personal_options', [ self::class, 'addUserProfileNotice' ], 20, 1 );
 		add_action( 'admin_enqueue_scripts', [ self::class, 'addAdminStyles' ] );
@@ -49,25 +51,20 @@ class General {
 		}, 5 );
 	}
 
-	public function processActivationHook(): void {
-		$role = get_role( 'administrator' );
-		$role->add_cap( Settings::MANAGE_CAPS, true );
-
-		do_action( 'itron/safety-passwords/capabilities/set' );
-
-		// Carbon fields can not be loaded during activation hook,
-		// and the plugin can not be properly activated during the activation hook
-		// because activation hook runs too late. See wp-admin/plugins.php:do_action( 'activate_' . $plugin );
-		// So, we just need to schedule the second phase of activation for the next normal request.
-		wp_schedule_single_event( time(), 'itron/safety-passwords/activate' );
-	}
-
 	public static function processSecondPhaseActivation(): void {
-		Cron::ensureEvent( true );
+		Activation::processSecondPhaseActivation();
 	}
 
 	public function processDeactivationHook(): void {
-		Cron::stopEvent();
+		Activation::processDeactivationHook();
+	}
+
+	public function grantCaps(): void {
+		Activation::grantCaps();
+	}
+
+	public function processActivationHook(): void {
+		Activation::processActivationHook();
 	}
 
 	public function addStreamConnector( array $connectors ): array {
@@ -94,25 +91,57 @@ class General {
 		return self::$preInitInterval;
 	}
 
-	public static function addAdminBarMenu( $wp_admin_bar ) {
-		if ( ! Settings::getInterval() ) {
-			return;
+	/**
+	 * Calculate the current user's reminder without changing password metadata.
+	 *
+	 * @return array{state: string, days: int}
+	 */
+	private static function getExpiryReminder(): array {
+		$interval = Settings::getInterval();
+		if ( ! $interval ) {
+			return [ 'state' => 'disabled', 'days' => 0 ];
 		}
 
 		$user_id = get_current_user_id();
-		$last_reset = get_user_meta( $user_id, Settings::$optionPrefix . 'last_reset', true ) ?: time();
-		if ( ( time() - $last_reset ) < ( DAY_IN_SECONDS * Settings::getInterval() - self::$reminderInterval ) ) {
+		if ( '1' === get_user_meta( $user_id, Settings::$optionPrefix . 'rp_inited', true ) ) {
+			return [ 'state' => 'reset_required', 'days' => 0 ];
+		}
+
+		$now = time();
+		$last_reset = (int) get_user_meta( $user_id, Settings::$optionPrefix . 'last_reset', true ) ?: $now;
+		$age = $now - $last_reset;
+		$duration = DAY_IN_SECONDS * $interval;
+		if ( $age >= $duration ) {
+			return [ 'state' => 'due', 'days' => 0 ];
+		}
+
+		$days = floor( $interval - (int) ( $age / DAY_IN_SECONDS ) );
+		$state = $age < ( $duration - self::$reminderInterval ) ? 'early' : 'reminder';
+		return [ 'state' => $state, 'days' => (int) $days ];
+	}
+
+	public static function addAdminBarMenu( $wp_admin_bar ) {
+		$reminder = self::getExpiryReminder();
+		if ( 'disabled' === $reminder['state'] || 'early' === $reminder['state'] ) {
 			return;
+		}
+
+		if ( 'reset_required' === $reminder['state'] ) {
+			$title = __( 'Password reset is required. Use the password recovery form.', 'safety-passwords' );
+		} elseif ( 'due' === $reminder['state'] ) {
+			$title = __( 'Password change is due. Change your password.', 'safety-passwords' );
+		} else {
+			$title = sprintf(
+				/* translators: %s: days */
+				__( 'Change password in %s days', 'safety-passwords' ),
+				$reminder['days']
+			);
 		}
 
 		/* @var WP_Admin_Bar $wp_admin_bar */
 		$wp_admin_bar->add_node( array(
 			'id'    => 'safety-passwords',
-			'title' => sprintf(
-				/* translators: %s: days */
-				__( 'Change password in %s days', 'safety-passwords' ),
-				floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) )
-			),
+			'title' => $title,
 			'meta'  => [
 				'class' => 'safety-passwords-reminder',
 			],
@@ -120,28 +149,34 @@ class General {
 	}
 
 	public static function addUserProfileNotice( WP_User $user ) {
-		if ( ! Settings::getInterval() ) {
-			return;
-		}
-
 		$user_id = get_current_user_id();
 		if ( $user_id != $user->ID ) {
 			return;
 		}
 
-		$last_reset = (int) get_user_meta( $user_id, Settings::$optionPrefix . 'last_reset', true ) ?: time();
-		if ( ( time() - $last_reset ) < ( DAY_IN_SECONDS * Settings::getInterval() - self::$reminderInterval ) ) {
+		$reminder = self::getExpiryReminder();
+		if ( 'disabled' === $reminder['state'] ) {
+			return;
+		}
+
+		if ( 'reset_required' === $reminder['state'] ) {
+			$notice = __( 'Password reset is required. Use the password recovery form.', 'safety-passwords' );
+			$type = 'warning';
+		} elseif ( 'due' === $reminder['state'] ) {
+			$notice = __( 'Password change is due. Change your password.', 'safety-passwords' );
+			$type = 'warning';
+		} elseif ( 'early' === $reminder['state'] ) {
 			$notice = sprintf(
 				/* translators: %s: days */
 				__( 'Next password change in %s days.', 'safety-passwords' ),
-				floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) )
+				$reminder['days']
 			);
 			$type = 'info';
 		} else {
 			$notice = sprintf(
 				/* translators: %s: days */
 				__( 'Please, change your password in %s days.', 'safety-passwords' ),
-				floor( Settings::getInterval() - (int) ( ( time() - $last_reset ) / DAY_IN_SECONDS ) )
+				$reminder['days']
 			);
 			$type = 'warning';
 		}
