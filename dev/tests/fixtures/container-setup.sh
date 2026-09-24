@@ -38,6 +38,8 @@ wp --user=integration-admin eval-file /test-fixtures/cron-reset-lifecycle.php fi
 wp --user=integration-admin eval-file /test-fixtures/cron-reset-lifecycle.php second
 wp --user=integration-admin eval-file /test-fixtures/cron-reset-lifecycle.php cleanup
 wp safety check-users
+. /test-fixtures/cli-password-phase.sh
+run_cli_password_phase ordinary '' 1
 
 # Each WP-CLI request defines one constant set before WordPress loads the plugin.
 for constant_case in false_bool false_string true_bool true_string zero_int zero_string one_int one_string decimal_min; do
@@ -62,6 +64,7 @@ rm wp-content/mu-plugins/05-safety-passwords-test-history-blocker.php
 wp eval-file /test-fixtures/mu-lifecycle.php initial
 wp eval-file /test-fixtures/mu-lifecycle.php repeat
 wp --user=integration-admin eval-file /test-fixtures/expiry-notices.php mu
+run_cli_password_phase mu '' 30
 
 # An ordinary activation still uses its deferred phase after MU removal.
 rm wp-content/mu-plugins/10-safety-passwords-test-loader.php
@@ -81,9 +84,18 @@ rm wp-content/mu-plugins/10-safety-passwords-test-loader.php
 wp eval-file /test-fixtures/mu-lifecycle.php removed
 wp cron event delete safety_passwords_periodically_reset --url=http://integration.invalid --quiet
 wp core multisite-convert --subdomains=false --quiet
-wp site create --slug=subsite --title=Subsite --email=integration@example.invalid --quiet >/dev/null
+cli_subsite_id=$(wp site create --slug=subsite --title=Subsite --email=integration@example.invalid --porcelain)
+case "$cli_subsite_id" in
+  ''|*[!0-9]*) echo 'Created subsite returned an invalid ID.' >&2; exit 1 ;;
+esac
+cli_subsite_url=$(wp site list --site__in="$cli_subsite_id" --field=url)
+if [ -z "$cli_subsite_url" ]; then
+  echo 'Created subsite returned no URL.' >&2
+  exit 1
+fi
 wp plugin activate safety-passwords --network --quiet
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-policy.php active
+run_cli_password_phase network http://integration.invalid 1 "$cli_subsite_id" "$cli_subsite_url"
 wp plugin deactivate safety-passwords --network --quiet
 wp --url=http://integration.invalid eval-file /test-fixtures/network-policy.php inactive
 wp --url=http://integration.invalid eval-file /test-fixtures/network-mu-lifecycle.php prepare

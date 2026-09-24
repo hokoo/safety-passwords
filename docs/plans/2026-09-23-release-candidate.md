@@ -1,5 +1,7 @@
 # Safety Passwords 1.5 local release candidate
 
+The authorized 2026-09-24 follow-up adds standard WP-CLI password-change bookkeeping with an explicit strength/reuse bypass disclaimer. Its separate task contracts, final five-target runtime results and delivery/QA state are recorded in `2026-09-24-cli-password-changes.md`; earlier acceptance below does not substitute for that follow-up's gate.
+
 This candidate branches from accepted E1 commit `80c1a69213f838aa23197cba71e30a02e275301d`. It adds the WordPress 7.1.2/PHP 8.5 and 8.2 platform adaptation from `dfe9073818cdb83f005df7cd1f06dbef725edc91`, the coherent 1.5 plugin version/Stable tag, and release documentation. The earlier 1.4.3 candidate at `257234d` passed its local verification; the separately reviewed 1.5 metadata update passed PHP lint, consistency and diff checks. Current automation scope and evidence are recorded in `2026-09-23-release-automation.md`.
 
 PR #21 tracks `release/1.4.3-ready` against `master`; the branch name is retained while the candidate version changes to 1.5. The previous product and test behavior passed at `257234d`; the scoped version review passed at `9debab3`. Release package verification passed at `3aeea53`; automatic WordPress.org delivery and its final acceptance evidence are tracked in the release automation plan. The deferred E2 branch remains outside the PR.

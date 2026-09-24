@@ -425,6 +425,21 @@ class Controller {
 		update_user_meta( $user->ID, self::USER_STOP_LIST_META_KEY, $stopList );
 	}
 
+	/**
+	 * Complete a password change made by a supported administrative WP-CLI command.
+	 * The caller supplies WordPress hashes from before and after a successful write.
+	 */
+	public static function completeCliPasswordChange( WP_User $user, string $previous_hash, string $saved_hash ): void {
+		if ( '' !== $previous_hash ) {
+			self::addToStopList( $previous_hash, $user, true );
+		}
+		self::addToStopList( $saved_hash, $user, true );
+
+		update_user_meta( $user->ID, Settings::$optionPrefix . 'last_reset', time() );
+		delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_inited' );
+		delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited' );
+	}
+
 	public static function putCurrentPasswordsToStopList(): void {
 		$users = UserScope::userIds();
 		foreach ( $users as $user_id ) {

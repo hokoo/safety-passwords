@@ -27,6 +27,8 @@ You can also define the period of time after which the user will be forced to ch
 
 After the period expires, the periodic check starts a mandatory reset and attempts to send one recovery email. Later checks leave that reset pending, even if the email attempt fails. A successful password reset or profile password change clears the pending state and renews the period.
 
+With this plugin loaded, `wp user update` with a password and `wp user reset-password` also complete a pending reset, renew the period, and record the saved password in history. These administrative WP-CLI changes bypass both password strength and password reuse checks; a warning on stderr states this when a password is changed. Later changes through the web forms still check the history. WordPress passwords and this plugin's history are global to an account on multisite, including accounts without site membership. WP-CLI changes made before this version are not repaired automatically. Commands run with the plugin skipped cannot update its history or reset state.
+
 Background reset emails and silent reset links also work on WordPress 5.0 through 5.6, where the login-page recovery function is unavailable during periodic checks.
 
 Password reset logs contain fixed failure categories and aggregate periodic reset and reminder counts, without account identifiers or WordPress error details. The `wp safety check-users` command also logs only aggregate counts and still reports `Success: Done.` Older Stream records may contain details from previous plugin versions; assess them privately under your site's retention policy. This update does not remove them.
@@ -79,6 +81,7 @@ To remove a must-use installation, remove the loader and then deactivate any ord
 = 1.5 =
 * Complete ordinary and must-use activation setup, current-network policy and scheduling, and isolated WordPress integration coverage.
 * Correct password expiry notices, repeated reset handling, constant overrides, and privacy-safe logging.
+* Track standard WP-CLI password changes in history and expiry state, with an explicit strength and reuse bypass warning.
 * Test WordPress 7.1.2 with PHP 8.5 and 8.2; retain PHP 7.4 and WordPress 5 compatibility.
 
 = 1.4.2 =

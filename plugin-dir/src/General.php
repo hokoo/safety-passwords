@@ -4,6 +4,7 @@ namespace iTRON\SafetyPasswords;
 
 use Exception;
 use iTRON\SafetyPasswords\Integrations\CLI\Safety;
+use iTRON\SafetyPasswords\Integrations\CLI\PasswordChanges;
 use iTRON\SafetyPasswords\Integrations\StreamConnector;
 use iTRON\SafetyPasswords\Loggers\Stream;
 use Psr\Log\LoggerInterface;
@@ -35,7 +36,10 @@ class General {
 		Settings::init();
 		Controller::init();
 
-		defined( 'WP_CLI' ) && WP_CLI && WP_CLI::add_command( 'safety', Safety::class );
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			WP_CLI::add_command( 'safety', Safety::class );
+			PasswordChanges::init();
+		}
 
 		add_action( Cron::EVENT_NAME, [ Controller::class, 'findExpiringPasswords' ] );
 		add_action( 'admin_bar_menu', [ self::class, 'addAdminBarMenu' ], 60,1 );
