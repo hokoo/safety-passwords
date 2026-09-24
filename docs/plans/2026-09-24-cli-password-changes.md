@@ -12,7 +12,7 @@ Dependencies: existing isolated runner and plugin dependencies; local Docker acc
 
 ### T1. Implement CLI completion and regression coverage
 
-Status: review
+Status: completed
 Owner: fresh worker
 Goal: make supported CLI password changes complete the plugin reset lifecycle with explicit administrative policy bypass.
 Scope: plugin CLI integration and Controller helpers, both readmes/changelog, isolated fixtures and runner wiring; translations if applicable.
@@ -33,7 +33,7 @@ Notes/Risks: use command-scoped hooks so CLI-driven test fixtures that simulate 
 
 ### T2. Verify, independently review, and commit
 
-Status: review
+Status: completed
 Owner: root with test_monitor and fresh epic_qa
 Goal: deliver a verified local commit for the v1.5 PR branch.
 Scope: frozen T1 diff, serial `bash dev/tests/run.sh` targets `php85-wp712`, `php82-wp712`, `php74-wp50`, `php74-wp68`, `php82-wp68`, independent QA, checkpoint and commit.
@@ -53,8 +53,8 @@ Notes/Risks: sandbox Docker/network permission may require escalation; runner re
 
 ### R1. Repair multisite CLI verification context
 
-Status: review
-Owner: fresh repair worker (repair insufficient; R2 diagnosis required)
+Status: completed
+Owner: fresh repair worker (initial attempt insufficient; outcome delivered through R3/R5)
 Goal: execute the required global-account observation in a real subsite context.
 Scope: CLI fixtures and their container-setup integration; inspect existing network fixtures and config setup for context rules.
 Out of Scope: weakening the subsite assertion, product scope changes, Docker execution, external writes.
@@ -69,7 +69,7 @@ Notes/Risks: existing multisite constants can pin WP-CLI to the main site; inspe
 
 ### R2. Diagnose the repeated subsite-context failure
 
-Status: review
+Status: completed
 Owner: fresh diagnosis worker, then test_monitor if needed
 Goal: identify the exact failing context condition before further repair.
 Scope: targeted source investigation and safe diagnostic assertions in the three CLI test fixture paths; conclusive source-based local repair if available.
@@ -85,7 +85,7 @@ Notes/Risks: one bounded diagnostic run allowed; material environment or policy 
 
 ### R3. Use the actual created multisite site
 
-Status: review
+Status: completed
 Owner: fresh repair worker
 Goal: observe account state from the actual created non-main site, independent of subdomain/subdirectory installation mode.
 Scope: the three CLI test fixture paths; capture created site identity and resolve its real URL, assert exact identity after separate CLI bootstrap.
@@ -102,7 +102,7 @@ Notes/Risks: pass only synthetic site metadata internally; do not expose account
 
 ### R4. Verify real failed writes across CLI versions
 
-Status: review
+Status: completed
 Owner: fresh repair worker
 Goal: prove failed persistence leaves policy state unchanged without assuming a missing-user exit code across CLI releases.
 Scope: CLI shell/PHP fixtures; attempt a password update on an existing synthetic account with a deterministic conflicting email, inspect unchanged history/password/reset state and absence of plugin warning.
@@ -118,7 +118,7 @@ Notes/Risks: pass generated candidate on stdin and do not expose command output 
 
 ### R5. Preserve legacy network bootstrap ordering
 
-Status: review
+Status: completed
 Owner: fresh repair worker
 Goal: retain baseline bootstrap behavior for main-network operations after the new CLI tests.
 Scope: container-setup.sh only; source-based restoration of baseline constant-removal ordering where appropriate.
@@ -145,4 +145,8 @@ All five commands passed on the final frozen implementation and fixture revision
 
 Each completed the entire existing integration scenario plus the CLI ordinary/MU/multisite phases: weak/reused passwords accepted, history recorded, web reuse rejected, reset state/reminders completed, rejected writes preserved state, partial and multi-account updates correct, exact subsite observed global state. Final raw logs are `/tmp/safety-passwords-t2-r5-<target>.log`, outside the repository. Final frozen hashes match; no generated repository artifacts; disposable resources removed and pre-existing development services preserved. Prior failed fixture iterations and transient download failure above are superseded by these final passes, not treated as passes themselves.
 
-Implementation and final fixtures are accepted by root for a scoped local commit. Independent epic QA remains required; task statuses stay `review` until the committed boundary passes that gate. No acceptance exception, push, merge, publication, real-account change, or remote CI result is claimed for this follow-up.
+Implementation and final fixtures were committed locally as `7cd2ac67f0ca9a6d302ba6ae29b89e7d82b0e321` on `release/1.4.3-ready`, the head branch of PR #21. A fresh independent `epic_qa` reviewed `ade5195..7cd2ac6` and returned **pass**. It independently checked source/AC coverage, the five final integration logs and fixture hashes, all four changed PHP files with `php -l`, both shell files with `sh -n`, and `git diff --check`. No credential disclosure, authorization-boundary defect, unmet criterion, or risk exception was identified.
+
+Root accepts T1/T2 and the final repair outcomes as completed at the verified local-commit boundary. R1's initial configuration relocation was superseded by R3's actual site identity and R5's restoration of baseline bootstrap ordering; the rejected intermediate state is not an accepted result. This final bookkeeping update records the QA gate without changing tested implementation or fixtures. Root-authored edits throughout were delivery bookkeeping only.
+
+Remaining boundaries: standard supported commands require the plugin to be loaded; custom/eval commands and historical CLI changes remain excluded. No push, merge, publication, real-account change, or remote CI result is claimed for this follow-up. User-owned `.codex/` and `AGENTS.md` remain untracked and untouched.
