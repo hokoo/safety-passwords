@@ -32,13 +32,43 @@ class Cron {
 		self::ensureCurrentSiteEvent( $reset );
 	}
 
-	private static function ensureCurrentSiteEvent( bool $reset ): void {
+	/** Confirm the canonical event across only the selected network. */
+	public static function isNormalized(): bool {
+		if ( ! is_multisite() ) {
+			return self::currentSiteEventIsCanonical();
+		}
+		$main_site_id = (int) get_network()->site_id;
+		$normalized = true;
+		$main_site_seen = false;
+		self::forEachNetworkSite( function ( $site_id ) use ( $main_site_id, &$normalized, &$main_site_seen ) {
+			if ( $site_id === $main_site_id ) {
+				$main_site_seen = true;
+				$normalized = self::currentSiteEventIsCanonical() && $normalized;
+			} elseif ( self::currentSiteEventCount() ) {
+				$normalized = false;
+			}
+		} );
+		return $main_site_seen && $normalized;
+	}
+
+	private static function currentSiteEventIsCanonical(): bool {
+		return 1 === self::currentSiteEventCount()
+			&& false !== wp_next_scheduled( self::EVENT_NAME )
+			&& 'twicedaily' === wp_get_schedule( self::EVENT_NAME );
+	}
+
+	private static function currentSiteEventCount(): int {
 		$count = 0;
 		foreach ( (array) _get_cron_array() as $events ) {
 			if ( isset( $events[ self::EVENT_NAME ] ) ) {
 				$count += count( $events[ self::EVENT_NAME ] );
 			}
 		}
+		return $count;
+	}
+
+	private static function ensureCurrentSiteEvent( bool $reset ): void {
+		$count = self::currentSiteEventCount();
 
 		if ( $reset || $count > 1 || ( $count && 'twicedaily' !== wp_get_schedule( self::EVENT_NAME ) ) ) {
 			// Clear every argument variant, including legacy events with arguments.

@@ -64,17 +64,19 @@ For contributor testing and the prepared release procedure, see the repository's
 6. Weak password is not allowed
 
 == Installation ==
-0. Upload plugin to the `/wp-content/plugins/` directory
-1. Activate the plugin through the \'Plugins\' menu in WordPress
-2. Go to Safety Passwords settings page and configure the plugin.
+Must-use (MU) installation is recommended for a security plugin: WordPress does not offer a Plugins-screen control to deactivate an MU loader. A filesystem administrator can still remove it. Keep the plugin directory at `/wp-content/plugins/safety-passwords/` and create `/wp-content/mu-plugins/safety-passwords-loader.php` containing:
 
-The plugin completes its initial password history and periodic reset setup on the next normal WordPress request after activation.
+`<?php require_once WP_PLUGIN_DIR . '/safety-passwords/safety-passwords.php';`
 
-When upgrading an existing ordinary installation to this network policy, reactivate the plugin once so the deferred phase seeds history for accounts in scope, refreshes site capabilities, and establishes the main-site schedule. Visiting settings alone only checks the schedule. An MU installation initializes automatically on its first request.
+WordPress loads the root loader automatically. Install dependencies before loading it. On the first request after Carbon Fields is ready, the plugin initializes password history, administrator capabilities, and the periodic check. On multisite, it works within the current network and keeps one event on that network's main site. Each network initializes when loaded in its own context.
 
-For a must-use installation, keep the plugin directory in `/wp-content/plugins/safety-passwords/` and create a PHP loader directly in `/wp-content/mu-plugins/` that requires `/wp-content/plugins/safety-passwords/safety-passwords.php`. WordPress loads that root loader automatically; no Plugins-menu activation or settings-page visit is needed. After Carbon Fields is ready on the first request, the plugin seeds current password history, grants administrator capabilities, and schedules the periodic check. On multisite, it seeds accounts in scope and keeps one event on each network's main site. Later requests preserve the history and schedule. New sites receive the capability when created.
+For an ordinary installation, upload the directory to `/wp-content/plugins/`, activate Safety Passwords in the Plugins screen (network activate for network-wide use), then configure its settings. Initial setup finishes on the next normal WordPress request after activation. Deactivation removes the periodic schedule and invalidates the initialization state for a later activation.
 
-To remove a must-use installation, remove the loader and then deactivate any ordinary copy if it is active. Deactivation clears scheduled events; simply deleting the MU loader cannot run a WordPress deactivation callback, so clear the `safety_passwords_periodically_reset` scheduled event on the main site (and any legacy subsite events) as part of removal. Removing the loader does not erase password history or settings. Before reinstalling a physically removed MU loader, delete the private `safety_passwords_mu_initialized` option on the main site so accounts added during its absence are included on the next request.
+Both ordinary and MU installations detect a new plugin version on a normal request and automatically migrate lifecycle state after Carbon Fields is ready. Reactivation and visiting settings are not required for an upgrade. An interrupted migration remains retryable. The settings page provides an **Initialize / repair** button for administrators (`manage_options` or the plugin management capability on a single site; `manage_network_options` on multisite). It repairs capabilities, current password history, and the schedule; it does not rotate passwords.
+
+For Composer or file-based deployments, run `wp safety init --url=<main-site-url>` after the new code is deployed, with WordPress bootstrapped and the target database available. This command also repairs an already current installation and exits with an error if initialization cannot complete (including a held initialization lock). A CI build without the target WordPress database cannot perform this step. In multisite with multiple networks, run it once per network using each network's main-site URL; there is no automatic all-network scan from one request.
+
+To remove an MU installation, remove its loader and deactivate any separately active ordinary copy. Removing the loader does not run deactivation; remove the `safety_passwords_periodically_reset` event from the main site and any legacy subsites as part of removal. Saved settings and password history remain. After reinstalling a physically removed loader, use **Initialize / repair** or `wp safety init --url=<main-site-url>` to include accounts added while the plugin was absent.
 
 
 == Changelog ==

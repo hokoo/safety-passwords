@@ -9,10 +9,16 @@ use Carbon_Fields\Field;
 class Settings {
 	public static string $optionPrefix;
 	const MANAGE_CAPS = 'safety_passwords_manage_options';
+	private const INIT_ACTION = 'safety_passwords_initialize';
+	private const SETTINGS_PAGE = 'crb_carbon_fields_container_safety_passwords';
 
 	public static function init(): void {
 		add_action( 'carbon_fields_register_fields', [ self::class, 'createOptions' ] );
 		add_action( 'after_setup_theme', [ self::class, 'loadCarbon' ] );
+		add_action( 'admin_post_' . self::INIT_ACTION, [ self::class, 'processInitialize' ] );
+		add_action( 'admin_footer', [ self::class, 'renderInitializeForm' ] );
+		add_action( 'admin_notices', [ self::class, 'renderInitializeNotice' ] );
+		add_action( 'network_admin_notices', [ self::class, 'renderInitializeNotice' ] );
 
 		// Ensure the cron event is scheduled when visiting the plugin settings page.
 		add_action( 'toplevel_page_crb_carbon_fields_container_safety_passwords', [ Cron::class, 'ensureEvent' ] );
@@ -32,6 +38,10 @@ class Settings {
 			$option_page->get_datastore()->set_object_id( get_current_network_id() );
 		}
 		$settings    = [];
+		$settings[] = Field::make( 'html', self::$optionPrefix . 'initialize_control' )
+			->set_html( '<p>' . esc_html__( 'Repair administrator capabilities, current password history, and the periodic schedule.', 'safety-passwords' ) . '</p>'
+				. '<button type="submit" class="button button-secondary" form="safety-passwords-initialize-form">'
+				. esc_html__( 'Initialize / repair', 'safety-passwords' ) . '</button>' );
 		// Force Password Reset after registration
 		if ( ! self::isOverloaded( 'rp_on_registration' ) ) {
 			$settings[] = Field::make( 'checkbox', self::$optionPrefix . 'rp_on_registration', __( 'Change After Registration', 'safety-passwords' ) )
@@ -78,6 +88,58 @@ class Settings {
 			// Carbon evaluates these conditions for both page attachment and saving.
 			$option_page->where( 'current_user_capability', '=', 'manage_network_options' );
 		}
+	}
+
+	private static function canManage(): bool {
+		return is_multisite()
+			? current_user_can( 'manage_network_options' )
+			: ( current_user_can( self::MANAGE_CAPS ) || current_user_can( 'manage_options' ) );
+	}
+
+	private static function onSettingsPage(): bool {
+		return isset( $_GET['page'] ) && self::SETTINGS_PAGE === $_GET['page'];
+	}
+
+	private static function settingsUrl(): string {
+		$base = is_multisite() ? network_admin_url( 'admin.php' ) : admin_url( 'admin.php' );
+		return add_query_arg( 'page', self::SETTINGS_PAGE, $base );
+	}
+
+	public static function renderInitializeForm(): void {
+		if ( ! self::onSettingsPage() || ! self::canManage() ) {
+			return;
+		}
+		echo '<form id="safety-passwords-initialize-form" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+		echo '<input type="hidden" name="action" value="' . esc_attr( self::INIT_ACTION ) . '">';
+		wp_nonce_field( self::INIT_ACTION );
+		echo '</form>';
+	}
+
+	public static function renderInitializeNotice(): void {
+		if ( ! self::onSettingsPage() || ! self::canManage() || ! isset( $_GET['safety_passwords_init'] ) ) {
+			return;
+		}
+		if ( 'success' === $_GET['safety_passwords_init'] ) {
+			General::echoNotice( __( 'Safety Passwords initialization completed.', 'safety-passwords' ), 'success' );
+		} elseif ( 'failed' === $_GET['safety_passwords_init'] ) {
+			General::echoNotice( __( 'Safety Passwords initialization did not complete. Retry after checking the site state.', 'safety-passwords' ), 'error' );
+		}
+	}
+
+	public static function processInitialize(): void {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( esc_html__( 'Invalid request method.', 'safety-passwords' ), '', [ 'response' => 405 ] );
+		}
+		if ( ! self::canManage() ) {
+			wp_die( esc_html__( 'You are not allowed to initialize Safety Passwords.', 'safety-passwords' ), '', [ 'response' => 403 ] );
+		}
+		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), self::INIT_ACTION ) ) {
+			wp_die( esc_html__( 'Invalid request nonce.', 'safety-passwords' ), '', [ 'response' => 403 ] );
+		}
+		$result = Activation::initialize( true );
+		$redirect = add_query_arg( 'safety_passwords_init', $result ? 'success' : 'failed', self::settingsUrl() );
+		wp_safe_redirect( $redirect );
+		exit;
 	}
 
 	private static function isOverloaded( $optionSlug ): bool {

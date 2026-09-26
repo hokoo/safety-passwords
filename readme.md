@@ -20,6 +20,15 @@ Don't forget update your hosts file
 ## Development
 WP plugin directory `plugin-dir`.
 
+For production, we recommend a must-use (MU) loader because the Plugins screen cannot deactivate it. A filesystem administrator can still remove the loader. Keep the plugin in `wp-content/plugins/safety-passwords/` and put a root-level `wp-content/mu-plugins/safety-passwords-loader.php` containing:
+
+```php
+<?php
+require_once WP_PLUGIN_DIR . '/safety-passwords/safety-passwords.php';
+```
+
+Install the plugin's Composer dependencies before the loader runs. Ordinary installation through the Plugins screen remains supported, including network activation.
+
 The three supported PHP constants override saved settings and show their effective values on the settings page:
 
 | Constant | Supported values | Effect |
@@ -42,11 +51,13 @@ Password reset logging reports fixed failure categories (`reset_request_failed`,
 
 On multisite, Safety Passwords reads its settings from the current network's settings page. With one network, the periodic check and manual `wp safety check-users` cover every account, including accounts that belong to no site. With multiple networks, they cover only accounts with site membership in the current network, including archived, spam, or deleted sites; other-network-only and globally unassigned accounts are excluded. An account shared by networks has one global WordPress password, so a reset by either network affects that account everywhere. Each network keeps one periodic event on its own main site; scheduling or deactivating from a subsite also removes older duplicate events on subsites in that network. Only network administrators with `manage_network_options` can open or save the network settings. The plugin continues to grant its settings capability to administrator roles on existing and newly created sites.
 
-For MU use, leave the plugin directory in `wp-content/plugins/safety-passwords/` and place a root-level PHP loader in `wp-content/mu-plugins/` that requires `WP_PLUGIN_DIR . '/safety-passwords/safety-passwords.php'` (see `dev/tests/fixtures/mu-loader.php`). The first request after Carbon Fields registers its fields grants capabilities, seeds current password history, and installs one periodic event on the main site, without ordinary activation or a settings-page visit. An interrupted first setup can retry after its 15-minute private option lock expires. Ordinary activation continues to defer its setup to the next request. Deactivation removes the scheduler and invalidates the MU completion marker so a later MU install includes accounts added while the plugin was inactive.
+For MU use, the first request after Carbon Fields registers its fields grants capabilities, seeds current password history, and installs one periodic event on the main site, without ordinary activation or a settings-page visit. An interrupted setup can retry after its 15-minute private option lock expires. Ordinary activation continues to defer its setup to the next request. Ordinary deactivation removes the scheduler and invalidates initialization state so a later activation includes accounts added while the plugin was inactive.
 
-When upgrading an existing ordinary installation to this network policy, reactivate the plugin once. Its deferred next-request phase seeds history for accounts in scope, refreshes site capabilities, and establishes the main-site schedule. Visiting the settings page alone checks scheduling and does not seed history. MU installations and upgrades initialize without this step.
+Ordinary and MU upgrades detect a changed plugin version on the next normal request after Carbon Fields is ready. They initialize the current network without an updater hook, reactivation, or a visit to settings. A failed or interrupted migration remains retryable. The Safety Passwords settings page has an **Initialize / repair** button that forces a repair of administrator capabilities, current password history and the periodic schedule without rotating passwords. The action is POST-only and requires a nonce and `manage_options` or the plugin management capability on a single site, or `manage_network_options` on multisite.
 
-To remove an MU installation, remove its loader, deactivate any separately active ordinary copy, and delete the `safety_passwords_periodically_reset` event from the main site and any legacy subsites using `wp cron event delete safety_passwords_periodically_reset --url=<site-url>`. Physical loader deletion does not call deactivation and cannot clean up scheduled events automatically. Before reinstalling a physically removed loader, run `wp option delete safety_passwords_mu_initialized --url=<main-site-url>` so accounts added while it was absent are included in the next bootstrap. Password history and saved settings remain.
+For a Composer or file-based deployment, run `wp safety init --url=<main-site-url>` after deploying the new plugin code, when WordPress can boot against the target database. A CI build without that database cannot run the migration. The command uses the same repair service, succeeds idempotently, and exits nonzero if initialization fails or another process holds the initialization lock. In a multi-network installation, invoke it once for each network's main-site URL. The `--url` selects the network; one invocation does not initialize every network. This does not change existing `wp safety check-users` behavior.
+
+To remove an MU installation, remove its loader, deactivate any separately active ordinary copy, and delete the `safety_passwords_periodically_reset` event from the main site and any legacy subsites using `wp cron event delete safety_passwords_periodically_reset --url=<site-url>`. Physical loader deletion does not call deactivation and cannot clean up scheduled events automatically. On reinstall, run `wp safety init --url=<main-site-url>` or use **Initialize / repair** to include accounts added while the plugin was absent. Password history and saved settings remain.
 
 ## Isolated WordPress integration checks
 

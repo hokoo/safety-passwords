@@ -1,12 +1,24 @@
 <?php
 
 namespace iTRON\SafetyPasswords\Integrations\CLI;
+use iTRON\SafetyPasswords\Activation;
 use iTRON\SafetyPasswords\Controller;
 use iTRON\SafetyPasswords\General;
 use WP_CLI;
 use WP_CLI_Command;
 
 class Safety extends WP_CLI_Command {
+	/**
+	 * Initialize or repair the current site's or network's lifecycle state.
+	 *
+	 * Run with --url=<main-site-url> to select a network in multisite.
+	 */
+	public function init( $args, $assoc_args ) {
+		if ( ! Activation::initialize( true ) ) {
+			WP_CLI::error( 'Safety Passwords initialization did not complete.' );
+		}
+		WP_CLI::success( 'Safety Passwords initialization completed.' );
+	}
 	/**
 	 * Walk-through the users and check if they have to reset their password.
 	 *

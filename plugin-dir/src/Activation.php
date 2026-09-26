@@ -5,7 +5,9 @@ namespace iTRON\SafetyPasswords;
 class Activation {
 	private const MU_COMPLETE_OPTION = 'safety_passwords_mu_initialized';
 	private const MU_LOCK_OPTION = 'safety_passwords_mu_initializing';
+	private const VERSION_OPTION = 'safety_passwords_initialized_version';
 	private const MU_LOCK_SECONDS = 900;
+	private static bool $mustUse = false;
 
 	public static function init(): void {
 		add_action( 'itron/safety-passwords/activate', [ self::class, 'processSecondPhaseActivation' ] );
@@ -16,9 +18,8 @@ class Activation {
 		}
 		// A root MU loader may require this ordinary-path file. Network plugins also
 		// load before muplugins_loaded, so hook timing cannot identify MU mode.
-		if ( self::loadedByMustUsePlugin() ) {
-			add_action( 'carbon_fields_fields_registered', [ self::class, 'bootstrapMustUse' ], 20 );
-		}
+		self::$mustUse = self::loadedByMustUsePlugin();
+		add_action( 'carbon_fields_fields_registered', [ self::class, self::$mustUse ? 'bootstrapMustUse' : 'bootstrapOrdinary' ], 20 );
 	}
 
 	private static function loadedByMustUsePlugin(): bool {
@@ -46,6 +47,7 @@ class Activation {
 	public static function processActivationHook(): void {
 		self::onMainSite( function () {
 			delete_option( self::MU_COMPLETE_OPTION );
+			delete_option( self::VERSION_OPTION );
 		} );
 		self::grantCaps();
 
@@ -75,47 +77,137 @@ class Activation {
 		self::onMainSite( function () {
 			wp_clear_scheduled_hook( 'itron/safety-passwords/activate' );
 			delete_option( self::MU_COMPLETE_OPTION );
+			delete_option( self::VERSION_OPTION );
 		} );
 	}
 
-	/** Initialize an MU install only after Carbon Fields has registered its fields. */
+	/** Automatic ordinary migration waits for any deferred activation phase. */
+	public static function bootstrapOrdinary(): void {
+		self::onMainSite( function () {
+			if ( ! wp_next_scheduled( 'itron/safety-passwords/activate' ) && get_option( self::VERSION_OPTION ) !== VERSION ) {
+				self::initialize();
+			}
+		} );
+	}
+
+	/** MU bootstrap also recovers an event removed after completed initialization. */
 	public static function bootstrapMustUse(): void {
 		self::onMainSite( function () {
-			if ( get_option( self::MU_COMPLETE_OPTION ) ) {
+			if ( self::isCurrentVersionComplete() ) {
 				self::ensureMainEvent();
 				return;
 			}
+			self::initialize();
+		} );
+	}
 
-			$owner = self::claimMuLock();
-			if ( null === $owner ) {
-				return;
-			}
-
+	/** Repair lifecycle state for the current network; false means retry is required. */
+	public static function initialize( bool $force = false ): bool {
+		if ( ! did_action( 'carbon_fields_fields_registered' ) ) {
+			return false;
+		}
+		$main_site_id = is_multisite() ? (int) get_network()->site_id : get_current_blog_id();
+		if ( get_current_blog_id() !== $main_site_id ) {
+			switch_to_blog( $main_site_id );
 			try {
+				return self::initializeOnMainSite( $force );
+			} finally {
+				restore_current_blog();
+			}
+		}
+		return self::initializeOnMainSite( $force );
+	}
+
+	private static function initializeOnMainSite( bool $force ): bool {
+		if ( ! $force && self::isCurrentVersionComplete() ) {
+			return true;
+		}
+		$owner = self::claimMuLock();
+		if ( null === $owner ) {
+			return false;
+		}
+		try {
+			wp_cache_delete( self::VERSION_OPTION, 'options' );
+			wp_cache_delete( self::MU_COMPLETE_OPTION, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+			if ( ! $force && self::isCurrentVersionComplete() ) {
+				return true;
+			}
+			// A failed forced repair must be retried by the next normal request.
+			if ( $force && get_option( self::VERSION_OPTION ) === VERSION ) {
+				delete_option( self::VERSION_OPTION );
+				wp_cache_delete( self::VERSION_OPTION, 'options' );
+				if ( get_option( self::VERSION_OPTION ) === VERSION ) {
+					return false;
+				}
+			}
+			// A completed explicit repair or MU bootstrap supersedes a deferred phase.
+			wp_clear_scheduled_hook( 'itron/safety-passwords/activate' );
+			if ( wp_next_scheduled( 'itron/safety-passwords/activate' ) ) {
+				return false;
+			}
+			self::grantCaps();
+			Controller::putCurrentPasswordsToStopList();
+			if ( ! self::currentPasswordsHaveHistory() || ! self::capabilitiesAreGranted() || ! self::ownsMuLock( $owner ) ) {
+				return false;
+			}
+			Cron::ensureEvent();
+			if ( ! Cron::isNormalized() || ! self::ownsMuLock( $owner ) ) {
+				return false;
+			}
+			if ( self::$mustUse && ! get_option( self::MU_COMPLETE_OPTION ) ) {
+				if ( ! update_option( self::MU_COMPLETE_OPTION, 1, false ) && ! get_option( self::MU_COMPLETE_OPTION ) ) {
+					return false;
+				}
 				wp_cache_delete( self::MU_COMPLETE_OPTION, 'options' );
-				wp_cache_delete( 'notoptions', 'options' );
-				if ( get_option( self::MU_COMPLETE_OPTION ) ) {
-					self::ensureMainEvent();
-					return;
+				if ( ! get_option( self::MU_COMPLETE_OPTION ) ) {
+					return false;
 				}
-				// A deferred ordinary activation must not later reset the MU scheduler.
-				wp_clear_scheduled_hook( 'itron/safety-passwords/activate' );
-				self::grantCaps();
-				Controller::putCurrentPasswordsToStopList();
-				if ( ! self::currentPasswordsHaveHistory() || ! self::ownsMuLock( $owner ) ) {
-					return;
-				}
-				Cron::ensureEvent();
-				if ( ! wp_next_scheduled( Cron::EVENT_NAME ) || 'twicedaily' !== wp_get_schedule( Cron::EVENT_NAME ) ) {
-					return;
-				}
-				if ( self::ownsMuLock( $owner ) ) {
-					update_option( self::MU_COMPLETE_OPTION, 1, false );
+			}
+			if ( ! self::ownsMuLock( $owner ) || ( ! update_option( self::VERSION_OPTION, VERSION, false ) && get_option( self::VERSION_OPTION ) !== VERSION ) ) {
+				return false;
+			}
+			wp_cache_delete( self::VERSION_OPTION, 'options' );
+			return get_option( self::VERSION_OPTION ) === VERSION && self::ownsMuLock( $owner );
+		} catch ( \Throwable $error ) {
+			return false;
+		} finally {
+			self::releaseMuLock( $owner );
+		}
+	}
+
+	private static function isCurrentVersionComplete(): bool {
+		return get_option( self::VERSION_OPTION ) === VERSION
+			&& ( ! self::$mustUse || get_option( self::MU_COMPLETE_OPTION ) );
+	}
+
+	private static function capabilitiesAreGranted(): bool {
+		if ( ! is_multisite() ) {
+			return self::currentSiteCapabilityIsGranted();
+		}
+		$sites = get_sites( [ 'network_id' => get_current_network_id(), 'fields' => 'ids', 'number' => 0 ] );
+		foreach ( $sites as $site_id ) {
+			switch_to_blog( (int) $site_id );
+			try {
+				if ( ! self::currentSiteCapabilityIsGranted() ) {
+					return false;
 				}
 			} finally {
-				self::releaseMuLock( $owner );
+				restore_current_blog();
 			}
-		} );
+		}
+		return true;
+	}
+
+	private static function currentSiteCapabilityIsGranted(): bool {
+		$role = get_role( 'administrator' );
+		if ( ! $role || ! $role->has_cap( Settings::MANAGE_CAPS ) ) {
+			return false;
+		}
+		$role_option = wp_roles()->role_key;
+		$stored_roles = get_option( $role_option );
+		return is_array( $stored_roles )
+			&& ! empty( $stored_roles['administrator']['capabilities'][ Settings::MANAGE_CAPS ] );
 	}
 
 	private static function currentPasswordsHaveHistory(): bool {

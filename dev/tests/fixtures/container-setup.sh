@@ -32,6 +32,18 @@ wp option add safety_passwords_integration_target isolated --quiet
 wp plugin activate safety-passwords --quiet
 wp --user=integration-admin eval-file /test-fixtures/activation.php initial
 wp --user=integration-admin eval-file /test-fixtures/activation.php followup
+wp --user=integration-admin eval-file /test-fixtures/lifecycle-migration.php prepare
+wp --user=integration-admin eval-file /test-fixtures/lifecycle-migration.php verify
+wp --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php admin
+wp safety init
+wp safety init
+wp eval-file /test-fixtures/lifecycle-controls.php cli-verify
+wp eval-file /test-fixtures/lifecycle-controls.php cli-lock
+if wp safety init >/dev/null 2>&1; then
+  echo 'Safety init unexpectedly succeeded with a held lock.' >&2
+  exit 1
+fi
+wp eval-file /test-fixtures/lifecycle-controls.php cli-unlock
 wp --user=integration-admin eval-file /test-fixtures/cron.php
 wp --user=integration-admin eval-file /test-fixtures/expiry-notices.php ordinary
 wp --user=integration-admin eval-file /test-fixtures/cron-reset-lifecycle.php first
@@ -63,6 +75,11 @@ wp eval-file /test-fixtures/mu-lifecycle.php failed
 rm wp-content/mu-plugins/05-safety-passwords-test-history-blocker.php
 wp eval-file /test-fixtures/mu-lifecycle.php initial
 wp eval-file /test-fixtures/mu-lifecycle.php repeat
+wp eval-file /test-fixtures/lifecycle-migration.php prepare
+wp eval-file /test-fixtures/lifecycle-migration.php verify
+wp --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php admin
+wp safety init
+wp eval-file /test-fixtures/lifecycle-controls.php cli-verify
 wp --user=integration-admin eval-file /test-fixtures/expiry-notices.php mu
 run_cli_password_phase mu '' 30
 
@@ -95,6 +112,8 @@ if [ -z "$cli_subsite_url" ]; then
 fi
 wp plugin activate safety-passwords --network --quiet
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-policy.php active
+wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php ordinary-network-prepare
+wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php ordinary-network-verify
 run_cli_password_phase network http://integration.invalid 1 "$cli_subsite_id" "$cli_subsite_url"
 wp plugin deactivate safety-passwords --network --quiet
 wp --url=http://integration.invalid eval-file /test-fixtures/network-policy.php inactive
@@ -104,12 +123,24 @@ wp --url=http://integration.invalid eval-file /test-fixtures/network-mu-lifecycl
 cp /test-fixtures/mu-loader.php wp-content/mu-plugins/10-safety-passwords-test-loader.php
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-mu-lifecycle.php initial
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-mu-lifecycle.php repeat
+wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php prepare
+wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php verify
+wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php admin
+wp safety init --url=http://integration.invalid
+wp eval-file /test-fixtures/lifecycle-controls.php cli-verify --url=http://integration.invalid
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-boundaries.php prepare
+wp safety init --url=http://integration.invalid
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-boundaries.php verify
+wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-controls.php network-capture
 # WordPress pins every request to network 1 while both generated constants exist.
 # Remove them only in this disposable config so each --url starts a real network bootstrap.
 wp config delete DOMAIN_CURRENT_SITE --quiet
 wp config delete PATH_CURRENT_SITE --quiet
+wp --url=http://sp-second-network.example.invalid/ eval-file /test-fixtures/lifecycle-migration.php prepare
+wp --url=http://sp-second-network.example.invalid/ eval-file /test-fixtures/lifecycle-migration.php verify
+wp safety init --url=http://sp-second-network.example.invalid/
+wp --url=http://sp-second-network.example.invalid/ eval-file /test-fixtures/lifecycle-controls.php cli-verify
+wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-controls.php network-verify
 wp --url=http://sp-second-network.example.invalid/ --user=integration-admin eval-file /test-fixtures/network-boundaries-reverse.php second
 wp --url=http://sp-second-network.example.invalid/boundary-subsite/ eval-file /test-fixtures/network-boundaries-reverse.php subsite
 wp --url=http://sp-second-network.example.invalid/ eval-file /test-fixtures/network-boundaries-reverse.php second-reset
