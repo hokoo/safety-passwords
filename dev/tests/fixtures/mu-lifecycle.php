@@ -39,6 +39,39 @@ if ( 'removed' === $stage ) {
 	return;
 }
 
+if ( 'return-gap-prepare' === $stage ) {
+	sp_mu_assert( ! class_exists( Cron::class ) && get_option( $complete_key ) && get_option( 'safety_passwords_initialized_version' ) === '1.5', 'same-version MU removal baseline' );
+	$login = 'sp-mu-gap-' . strtolower( wp_generate_password( 12, false, false ) );
+	$password = wp_generate_password( 32, true, false );
+	$id = wp_create_user( $login, $password, $login . '@example.invalid' );
+	unset( $password );
+	sp_mu_assert( is_int( $id ) && $id > 0 && ! get_user_meta( $id, $history_key, true ), 'absent-period account setup' );
+	sp_mu_assert( add_option( 'safety_passwords_integration_mu_gap', [ 'id' => $id ], '', false ), 'absent-period state setup' );
+	echo "PASS: absent-period MU account prepared with marker retained\n";
+	return;
+}
+
+if ( 'return-gap-verify' === $stage || 'return-gap-repaired' === $stage ) {
+	sp_mu_assert( class_exists( Cron::class ) && get_option( $complete_key ) && get_option( 'safety_passwords_initialized_version' ) === \iTRON\SafetyPasswords\VERSION, 'same-version MU return readiness' );
+	$gap = get_option( 'safety_passwords_integration_mu_gap' );
+	sp_mu_assert( is_array( $gap ) && isset( $gap['id'] ), 'absent-period state missing' );
+	$id = (int) $gap['id'];
+	$user = get_user_by( 'ID', $id );
+	$history = get_user_meta( $id, $history_key, true );
+	sp_mu_assert( $user instanceof WP_User && sp_mu_events( $cron_hook ) === 1 && wp_get_schedule( $cron_hook ) === 'twicedaily', 'MU return scheduler or account' );
+	if ( 'return-gap-verify' === $stage ) {
+		sp_mu_assert( ! $history, 'same-version MU return unexpectedly backfilled history' );
+		echo "PASS: same-version MU return retained history gap until repair\n";
+		return;
+	}
+	sp_mu_assert( is_array( $history ) && count( $history ) === 1 && in_array( $user->user_pass, $history, true ), 'explicit repair did not backfill current history' );
+	require_once ABSPATH . 'wp-admin/includes/user.php';
+	sp_mu_assert( wp_delete_user( $id ), 'absent-period account cleanup' );
+	delete_option( 'safety_passwords_integration_mu_gap' );
+	echo "PASS: explicit MU repair restored current history without duplicate event\n";
+	return;
+}
+
 if ( 'prepare' === $stage || 'prepare-return' === $stage || 'prepare-ordinary' === $stage ) {
 	sp_mu_assert( ! class_exists( Cron::class ), 'ordinary plugin still loaded' );
 	if ( 'prepare-ordinary' === $stage ) {

@@ -15,6 +15,44 @@ run_schedule_recovery() {
   wp "$@" eval-file /test-fixtures/lifecycle-migration.php schedule-failure-retry
 }
 
+run_concurrent_bootstrap() {
+  race_base=wp-content/safety-passwords-integration-race
+  wp eval-file /test-fixtures/lifecycle-race.php prepare
+  cp /test-fixtures/lifecycle-race-blocker.php wp-content/mu-plugins/05-safety-passwords-test-race-blocker.php
+  SP_TEST_RACE_ROLE=holder wp eval-file /test-fixtures/lifecycle-race.php holder &
+  race_pid=$!
+  race_deadline=$(($(date +%s) + 30))
+  race_ready=0
+  while [ "$(date +%s)" -lt "$race_deadline" ]; do
+    if [ -f "$race_base.held" ]; then
+      race_ready=1
+      break
+    fi
+    if ! kill -0 "$race_pid" 2>/dev/null; then
+      break
+    fi
+    sleep 0.05
+  done
+  if [ "$race_ready" -ne 1 ]; then
+    touch "$race_base.release"
+    wait "$race_pid" || true
+    rm -f "$race_base.held" "$race_base.release" wp-content/mu-plugins/05-safety-passwords-test-race-blocker.php
+    echo 'Concurrent bootstrap holder did not reach the lease barrier.' >&2
+    return 1
+  fi
+  if ! SP_TEST_RACE_ROLE=contender wp eval-file /test-fixtures/lifecycle-race.php contender; then
+    touch "$race_base.release"
+    wait "$race_pid" || true
+    rm -f "$race_base.held" "$race_base.release" wp-content/mu-plugins/05-safety-passwords-test-race-blocker.php
+    return 1
+  fi
+  if ! wait "$race_pid"; then
+    rm -f "$race_base.held" "$race_base.release" wp-content/mu-plugins/05-safety-passwords-test-race-blocker.php
+    return 1
+  fi
+  rm -f "$race_base.held" "$race_base.release" wp-content/mu-plugins/05-safety-passwords-test-race-blocker.php
+}
+
 wp_version=$1
 installed_version=$(wp core version)
 if [ "$installed_version" != "$wp_version" ]; then
@@ -39,9 +77,16 @@ if ! php -r 'echo bin2hex(random_bytes(24)), PHP_EOL;' 2>/dev/null |
 fi
 
 wp option add safety_passwords_integration_target isolated --quiet
+# Change only the copied plugin in this disposable volume. The next request below
+# proves an actual file-version replacement, separate from marker-only migration.
+php -r '$path="wp-content/plugins/safety-passwords/safety-passwords.php"; $code=file_get_contents($path); $code=str_replace("Version: 1.5", "Version: 1.4.99", $code, $headers); $code=str_replace("const VERSION     = '\''1.5'\'';", "const VERSION     = '\''1.4.99'\'';", $code, $constants); if ($headers !== 1 || $constants !== 1 || file_put_contents($path, $code) === false) { exit(1); }'
 wp plugin activate safety-passwords --quiet
 wp --user=integration-admin eval-file /test-fixtures/activation.php initial
 wp --user=integration-admin eval-file /test-fixtures/activation.php followup
+wp eval-file /test-fixtures/file-version-upgrade.php prepare
+cp /plugin-source/safety-passwords.php wp-content/plugins/safety-passwords/safety-passwords.php
+wp eval-file /test-fixtures/file-version-upgrade.php verify
+run_concurrent_bootstrap
 wp --user=integration-admin eval-file /test-fixtures/activation.php repair
 wp --user=integration-admin eval-file /test-fixtures/activation.php lease
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-migration.php prepare
@@ -104,6 +149,14 @@ wp safety init
 wp eval-file /test-fixtures/lifecycle-controls.php cli-verify
 wp --user=integration-admin eval-file /test-fixtures/expiry-notices.php mu
 run_cli_password_phase mu '' 30
+
+# A physical MU-loader absence cannot run cleanup or remember newly created accounts.
+rm wp-content/mu-plugins/10-safety-passwords-test-loader.php
+wp eval-file /test-fixtures/mu-lifecycle.php return-gap-prepare
+cp /test-fixtures/mu-loader.php wp-content/mu-plugins/10-safety-passwords-test-loader.php
+wp eval-file /test-fixtures/mu-lifecycle.php return-gap-verify
+wp safety init
+wp eval-file /test-fixtures/mu-lifecycle.php return-gap-repaired
 
 # With WP-Cron enabled, ordinary reactivation also completes on the next load.
 rm wp-content/mu-plugins/10-safety-passwords-test-loader.php
