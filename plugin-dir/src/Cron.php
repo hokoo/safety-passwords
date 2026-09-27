@@ -16,7 +16,7 @@ class Cron {
 		self::unscheduleCurrentSiteEvents();
 	}
 
-	public static function ensureEvent( bool $reset = false ): void {
+	public static function ensureEvent( bool $reset = false, ?callable $progress = null ): void {
 		if ( is_multisite() ) {
 			$main_site_id = (int) get_network()->site_id;
 			self::forEachNetworkSite( function ( $site_id ) use ( $main_site_id, $reset ) {
@@ -25,17 +25,30 @@ class Cron {
 					return;
 				}
 				self::ensureCurrentSiteEvent( $reset );
-			} );
+			}, $progress );
 			return;
 		}
 
+		if ( $progress ) {
+			$progress();
+		}
 		self::ensureCurrentSiteEvent( $reset );
+		if ( $progress ) {
+			$progress();
+		}
 	}
 
 	/** Confirm the canonical event across only the selected network. */
-	public static function isNormalized(): bool {
+	public static function isNormalized( ?callable $progress = null ): bool {
 		if ( ! is_multisite() ) {
-			return self::currentSiteEventIsCanonical();
+			if ( $progress ) {
+				$progress();
+			}
+			$normalized = self::currentSiteEventIsCanonical();
+			if ( $progress ) {
+				$progress();
+			}
+			return $normalized;
 		}
 		$main_site_id = (int) get_network()->site_id;
 		$normalized = true;
@@ -47,7 +60,7 @@ class Cron {
 			} elseif ( self::currentSiteEventCount() ) {
 				$normalized = false;
 			}
-		} );
+		}, $progress );
 		return $main_site_seen && $normalized;
 	}
 
@@ -91,15 +104,27 @@ class Cron {
 		wp_unschedule_hook( self::EVENT_NAME );
 	}
 
-	private static function forEachNetworkSite( callable $callback ): void {
+	private static function forEachNetworkSite( callable $callback, ?callable $progress = null ): void {
+		if ( $progress ) {
+			$progress();
+		}
 		$sites = get_sites( [ 'network_id' => get_current_network_id(), 'fields' => 'ids', 'number' => 0 ] );
+		if ( $progress ) {
+			$progress();
+		}
 		foreach ( $sites as $site_id ) {
+			if ( $progress ) {
+				$progress();
+			}
 			$site_id = (int) $site_id;
 			switch_to_blog( $site_id );
 			try {
 				$callback( $site_id );
 			} finally {
 				restore_current_blog();
+			}
+			if ( $progress ) {
+				$progress();
 			}
 		}
 	}

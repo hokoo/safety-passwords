@@ -54,17 +54,19 @@ if ( 'prepare' === $stage ) {
 	return;
 }
 
-if ( 'ordinary-pending' === $stage ) {
+if ( 'ordinary-complete' === $stage ) {
 	sp_network_mu_assert( class_exists( Cron::class ), 'ordinary network plugin unavailable' );
 	$state = get_option( $state_key );
 	sp_network_mu_assert( is_array( $state ) && isset( $state['ids'] ), 'transition state missing' );
 	foreach ( $state['ids'] as $id ) {
-		sp_network_mu_assert( ! get_user_meta( (int) $id, Controller::USER_STOP_LIST_META_KEY, true ), 'ordinary network load seeded history early' );
+		$history = get_user_meta( (int) $id, Controller::USER_STOP_LIST_META_KEY, true );
+		sp_network_mu_assert( is_array( $history ) && count( $history ) === 1, 'ordinary network load omitted history' );
 	}
 	sp_network_mu_assert( ! get_option( 'safety_passwords_mu_initialized' ), 'ordinary network load set MU marker' );
-	sp_network_mu_assert( sp_network_mu_events() === 0, 'ordinary network load scheduled periodic event early' );
-	sp_network_mu_assert( wp_next_scheduled( 'itron/safety-passwords/activate' ), 'ordinary network activation lost deferred phase' );
-	echo "PASS: ordinary network load retained deferred phase\n";
+	sp_network_mu_assert( get_option( 'safety_passwords_initialized_version' ) === \iTRON\SafetyPasswords\VERSION, 'ordinary network load did not complete' );
+	sp_network_mu_assert( sp_network_mu_events() === 1, 'ordinary network load did not schedule one periodic event' );
+	sp_network_mu_assert( ! wp_next_scheduled( 'itron/safety-passwords/activate' ), 'ordinary network activation retained deferred phase' );
+	echo "PASS: ordinary network load completed activation\n";
 	return;
 }
 

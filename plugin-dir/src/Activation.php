@@ -11,7 +11,6 @@ class Activation {
 
 	public static function init(): void {
 		add_action( 'itron/safety-passwords/activate', [ self::class, 'processSecondPhaseActivation' ] );
-		add_action( 'itron/safety-passwords/activate', [ Controller::class, 'putCurrentPasswordsToStopList' ], 20 );
 		if ( is_multisite() ) {
 			// Fired after the new site's roles are initialized on supported WordPress versions.
 			add_action( 'wpmu_new_blog', [ self::class, 'grantCapsForNewSite' ] );
@@ -19,7 +18,7 @@ class Activation {
 		// A root MU loader may require this ordinary-path file. Network plugins also
 		// load before muplugins_loaded, so hook timing cannot identify MU mode.
 		self::$mustUse = self::loadedByMustUsePlugin();
-		add_action( 'carbon_fields_fields_registered', [ self::class, self::$mustUse ? 'bootstrapMustUse' : 'bootstrapOrdinary' ], 20 );
+		add_action( 'wp_loaded', [ self::class, self::$mustUse ? 'bootstrapMustUse' : 'bootstrapOrdinary' ] );
 	}
 
 	private static function loadedByMustUsePlugin(): bool {
@@ -69,7 +68,17 @@ class Activation {
 	}
 
 	public static function processSecondPhaseActivation(): void {
-		Cron::ensureEvent( true );
+		// A concurrent bootstrap may have completed while WP-Cron waited to run.
+		if ( defined( 'DOING_CRON' ) && DOING_CRON ) {
+			$complete = false;
+			self::onMainSite( function () use ( &$complete ) {
+				$complete = self::isCurrentVersionComplete();
+			} );
+			if ( $complete ) {
+				return;
+			}
+		}
+		self::initialize( true );
 	}
 
 	public static function processDeactivationHook(): void {
@@ -81,10 +90,10 @@ class Activation {
 		} );
 	}
 
-	/** Automatic ordinary migration waits for any deferred activation phase. */
+	/** Complete pending ordinary activation or migration on the next full load. */
 	public static function bootstrapOrdinary(): void {
 		self::onMainSite( function () {
-			if ( ! wp_next_scheduled( 'itron/safety-passwords/activate' ) && get_option( self::VERSION_OPTION ) !== VERSION ) {
+			if ( get_option( self::VERSION_OPTION ) !== VERSION ) {
 				self::initialize();
 			}
 		} );
@@ -103,9 +112,6 @@ class Activation {
 
 	/** Repair lifecycle state for the current network; false means retry is required. */
 	public static function initialize( bool $force = false ): bool {
-		if ( ! did_action( 'carbon_fields_fields_registered' ) ) {
-			return false;
-		}
 		$main_site_id = is_multisite() ? (int) get_network()->site_id : get_current_blog_id();
 		if ( get_current_blog_id() !== $main_site_id ) {
 			switch_to_blog( $main_site_id );
@@ -126,7 +132,13 @@ class Activation {
 		if ( null === $owner ) {
 			return false;
 		}
+		$progress = function () use ( &$owner ) {
+			if ( ! self::renewMuLock( $owner ) ) {
+				throw new \RuntimeException();
+			}
+		};
 		try {
+			$progress();
 			wp_cache_delete( self::VERSION_OPTION, 'options' );
 			wp_cache_delete( self::MU_COMPLETE_OPTION, 'options' );
 			wp_cache_delete( 'notoptions', 'options' );
@@ -141,18 +153,18 @@ class Activation {
 					return false;
 				}
 			}
-			// A completed explicit repair or MU bootstrap supersedes a deferred phase.
+			// Completed bootstrap supersedes the deferred activation phase.
 			wp_clear_scheduled_hook( 'itron/safety-passwords/activate' );
 			if ( wp_next_scheduled( 'itron/safety-passwords/activate' ) ) {
 				return false;
 			}
-			self::grantCaps();
-			Controller::putCurrentPasswordsToStopList();
-			if ( ! self::currentPasswordsHaveHistory() || ! self::capabilitiesAreGranted() || ! self::ownsMuLock( $owner ) ) {
+			self::grantCaps( $progress );
+			Controller::putCurrentPasswordsToStopList( $progress );
+			if ( ! self::currentPasswordsHaveHistory( $progress ) || ! self::capabilitiesAreGranted( $progress ) || ! self::renewMuLock( $owner ) ) {
 				return false;
 			}
-			Cron::ensureEvent();
-			if ( ! Cron::isNormalized() || ! self::ownsMuLock( $owner ) ) {
+			Cron::ensureEvent( false, $progress );
+			if ( ! Cron::isNormalized( $progress ) || ! self::renewMuLock( $owner ) ) {
 				return false;
 			}
 			if ( self::$mustUse && ! get_option( self::MU_COMPLETE_OPTION ) ) {
@@ -164,11 +176,12 @@ class Activation {
 					return false;
 				}
 			}
-			if ( ! self::ownsMuLock( $owner ) || ( ! update_option( self::VERSION_OPTION, VERSION, false ) && get_option( self::VERSION_OPTION ) !== VERSION ) ) {
+			if ( ! self::renewMuLock( $owner ) || ! self::ownsMuLock( $owner ) || ( ! update_option( self::VERSION_OPTION, VERSION, false ) && get_option( self::VERSION_OPTION ) !== VERSION ) ) {
 				return false;
 			}
 			wp_cache_delete( self::VERSION_OPTION, 'options' );
-			return get_option( self::VERSION_OPTION ) === VERSION && self::ownsMuLock( $owner );
+			$complete = get_option( self::VERSION_OPTION ) === VERSION && self::ownsMuLock( $owner );
+			return $complete;
 		} catch ( \Throwable $error ) {
 			return false;
 		} finally {
@@ -181,12 +194,25 @@ class Activation {
 			&& ( ! self::$mustUse || get_option( self::MU_COMPLETE_OPTION ) );
 	}
 
-	private static function capabilitiesAreGranted(): bool {
+	private static function capabilitiesAreGranted( ?callable $progress = null ): bool {
+		if ( $progress ) {
+			$progress();
+		}
 		if ( ! is_multisite() ) {
-			return self::currentSiteCapabilityIsGranted();
+			$granted = self::currentSiteCapabilityIsGranted();
+			if ( $progress ) {
+				$progress();
+			}
+			return $granted;
 		}
 		$sites = get_sites( [ 'network_id' => get_current_network_id(), 'fields' => 'ids', 'number' => 0 ] );
+		if ( $progress ) {
+			$progress();
+		}
 		foreach ( $sites as $site_id ) {
+			if ( $progress ) {
+				$progress();
+			}
 			switch_to_blog( (int) $site_id );
 			try {
 				if ( ! self::currentSiteCapabilityIsGranted() ) {
@@ -194,6 +220,9 @@ class Activation {
 				}
 			} finally {
 				restore_current_blog();
+			}
+			if ( $progress ) {
+				$progress();
 			}
 		}
 		return true;
@@ -210,9 +239,12 @@ class Activation {
 			&& ! empty( $stored_roles['administrator']['capabilities'][ Settings::MANAGE_CAPS ] );
 	}
 
-	private static function currentPasswordsHaveHistory(): bool {
-		$users = UserScope::userIds();
+	private static function currentPasswordsHaveHistory( ?callable $progress = null ): bool {
+		$users = UserScope::userIds( null, $progress );
 		foreach ( $users as $user_id ) {
+			if ( $progress ) {
+				$progress();
+			}
 			$user = get_user_by( 'ID', $user_id );
 			if ( ! $user instanceof \WP_User ) {
 				continue;
@@ -220,6 +252,9 @@ class Activation {
 			$history = get_user_meta( $user_id, Controller::USER_STOP_LIST_META_KEY, true );
 			if ( ! is_array( $history ) || ! in_array( $user->user_pass, $history, true ) ) {
 				return false;
+			}
+			if ( $progress ) {
+				$progress();
 			}
 		}
 		return true;
@@ -250,7 +285,7 @@ class Activation {
 		self::flushMuLockCache();
 		$previous = get_option( self::MU_LOCK_OPTION, '' );
 		$expiry = (int) strtok( (string) $previous, ':' );
-		if ( ! is_string( $previous ) || ! $expiry || $expiry >= time() ) {
+		if ( ! is_string( $previous ) || ! $expiry || $expiry > time() ) {
 			return null;
 		}
 		$replaced = $wpdb->update(
@@ -265,8 +300,46 @@ class Activation {
 	}
 
 	private static function ownsMuLock( string $owner ): bool {
+		if ( (int) strtok( $owner, ':' ) <= time() ) {
+			return false;
+		}
 		self::flushMuLockCache();
 		return get_option( self::MU_LOCK_OPTION, '' ) === $owner;
+	}
+
+	/** Extend only our unexpired lease using the complete old value as a CAS token. */
+	private static function renewMuLock( string &$owner ): bool {
+		global $wpdb;
+		$expiry = (int) strtok( $owner, ':' );
+		$now = time();
+		if ( $expiry <= $now ) {
+			return false;
+		}
+		if ( $expiry - $now > 300 ) {
+			$owned = false;
+			self::onMainSite( function () use ( $owner, &$owned ) {
+				$owned = self::ownsMuLock( $owner );
+			} );
+			return $owned;
+		}
+
+		$next = (string) ( $now + self::MU_LOCK_SECONDS ) . ':' . substr( $owner, strpos( $owner, ':' ) + 1 );
+		$updated = null;
+		self::onMainSite( function () use ( $wpdb, $owner, $next, &$updated ) {
+			$updated = $wpdb->update(
+				$wpdb->options,
+				[ 'option_value' => $next ],
+				[ 'option_name' => self::MU_LOCK_OPTION, 'option_value' => $owner ],
+				[ '%s' ],
+				[ '%s', '%s' ]
+			);
+			self::flushMuLockCache();
+		} );
+		if ( 1 !== $updated ) {
+			return false;
+		}
+		$owner = $next;
+		return true;
 	}
 
 	private static function releaseMuLock( string $owner ): void {
@@ -298,15 +371,27 @@ class Activation {
 		}
 	}
 
-	public static function grantCaps(): void {
+	public static function grantCaps( ?callable $progress = null ): void {
+		if ( $progress ) {
+			$progress();
+		}
 		if ( is_multisite() ) {
 			$sites = get_sites( [ 'network_id' => get_current_network_id(), 'fields' => 'ids', 'number' => 0 ] );
+			if ( $progress ) {
+				$progress();
+			}
 			foreach ( $sites as $site_id ) {
+				if ( $progress ) {
+					$progress();
+				}
 				switch_to_blog( (int) $site_id );
 				try {
 					self::grantCurrentSiteCap();
 				} finally {
 					restore_current_blog();
+				}
+				if ( $progress ) {
+					$progress();
 				}
 			}
 		} else {
@@ -314,6 +399,9 @@ class Activation {
 		}
 
 		do_action( 'itron/safety-passwords/capabilities/set' );
+		if ( $progress ) {
+			$progress();
+		}
 	}
 
 	public static function grantCapsForNewSite( $site_id ): void {

@@ -440,15 +440,21 @@ class Controller {
 		delete_user_meta( $user->ID, Settings::$optionPrefix . 'rp_pre_inited' );
 	}
 
-	public static function putCurrentPasswordsToStopList(): void {
-		$users = UserScope::userIds();
+	public static function putCurrentPasswordsToStopList( ?callable $progress = null ): void {
+		$users = UserScope::userIds( null, $progress );
 		foreach ( $users as $user_id ) {
+			if ( $progress ) {
+				$progress();
+			}
 			$user = get_user_by( 'ID', $user_id );
 			if ( ! $user instanceof WP_User ) {
 				continue;
 			}
 
 			self::addToStopList( $user->user_pass, $user, true );
+			if ( $progress ) {
+				$progress();
+			}
 		}
 	}
 }

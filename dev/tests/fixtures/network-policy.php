@@ -60,7 +60,9 @@ if ( $stage === 'inactive' ) {
 }
 
 sp_network_assert( class_exists( Activation::class ) && class_exists( Controller::class ), 'network plugin unavailable' );
-sp_network_assert( sp_network_events() === 0, 'periodic event started before deferred phase' );
+sp_network_assert( get_option( 'safety_passwords_initialized_version' ) === \iTRON\SafetyPasswords\VERSION, 'ordinary network initialization did not complete on load' );
+sp_network_assert( sp_network_events() === 1 && wp_get_schedule( Cron::EVENT_NAME ) === 'twicedaily', 'ordinary network load did not schedule one main event' );
+sp_network_assert( ! wp_next_scheduled( 'itron/safety-passwords/activate' ), 'ordinary network load retained deferred event' );
 sp_network_assert( get_role( 'administrator' )->has_cap( Settings::MANAGE_CAPS ), 'main administrator capability missing' );
 switch_to_blog( $subsite );
 sp_network_assert( get_role( 'administrator' )->has_cap( Settings::MANAGE_CAPS ), 'existing subsite administrator capability missing' );
@@ -81,10 +83,11 @@ sp_network_assert( isset( $sub_memberships[ $subsite ] ) && ! isset( $sub_member
 $network_ids = array_map( 'intval', get_users( [ 'fields' => 'ids', 'blog_id' => 0 ] ) );
 sp_network_assert( in_array( $unassigned, $network_ids, true ) && in_array( $sub_user, $network_ids, true ), 'all-account query omitted test accounts' );
 
+sp_network_assert( Activation::initialize( true ), 'explicit network repair did not complete' );
+sp_network_assert( sp_network_events() === 1 && wp_get_schedule( Cron::EVENT_NAME ) === 'twicedaily', 'network repair did not preserve one main event' );
+sp_network_assert( sp_network_history_count( $unassigned ) === 1 && sp_network_history_count( $sub_user ) === 1, 'network repair omitted network account' );
 do_action( 'itron/safety-passwords/activate' );
-wp_clear_scheduled_hook( 'itron/safety-passwords/activate' );
-sp_network_assert( sp_network_events() === 1 && wp_get_schedule( Cron::EVENT_NAME ) === 'twicedaily', 'deferred phase did not schedule main event' );
-sp_network_assert( sp_network_history_count( $unassigned ) === 1 && sp_network_history_count( $sub_user ) === 1, 'deferred history omitted network account' );
+sp_network_assert( sp_network_events() === 1 && sp_network_history_count( $unassigned ) === 1, 'repeat public activation duplicated network work' );
 switch_to_blog( $subsite );
 Activation::processActivationHook();
 sp_network_assert( get_current_blog_id() === $subsite && ! wp_next_scheduled( 'itron/safety-passwords/activate' ), 'activation from subsite changed context or left deferred event there' );

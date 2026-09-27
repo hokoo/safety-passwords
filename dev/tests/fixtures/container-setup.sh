@@ -32,6 +32,8 @@ wp option add safety_passwords_integration_target isolated --quiet
 wp plugin activate safety-passwords --quiet
 wp --user=integration-admin eval-file /test-fixtures/activation.php initial
 wp --user=integration-admin eval-file /test-fixtures/activation.php followup
+wp --user=integration-admin eval-file /test-fixtures/activation.php repair
+wp --user=integration-admin eval-file /test-fixtures/activation.php lease
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-migration.php prepare
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-migration.php verify
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php admin
@@ -83,13 +85,15 @@ wp eval-file /test-fixtures/lifecycle-controls.php cli-verify
 wp --user=integration-admin eval-file /test-fixtures/expiry-notices.php mu
 run_cli_password_phase mu '' 30
 
-# An ordinary activation still uses its deferred phase after MU removal.
+# With WP-Cron enabled, ordinary reactivation also completes on the next load.
 rm wp-content/mu-plugins/10-safety-passwords-test-loader.php
 wp eval-file /test-fixtures/mu-lifecycle.php removed
 wp cron event delete safety_passwords_periodically_reset --url=http://integration.invalid --quiet
 wp eval-file /test-fixtures/mu-lifecycle.php prepare-ordinary
+wp config set DISABLE_WP_CRON false --raw --quiet
 wp plugin activate safety-passwords --quiet
 wp --user=integration-admin eval-file /test-fixtures/activation.php transition
+wp config set DISABLE_WP_CRON true --raw --quiet
 wp plugin deactivate safety-passwords --quiet
 wp eval-file /test-fixtures/mu-lifecycle.php prepare-return
 cp /test-fixtures/mu-loader.php wp-content/mu-plugins/10-safety-passwords-test-loader.php
@@ -119,7 +123,7 @@ wp plugin deactivate safety-passwords --network --quiet
 wp --url=http://integration.invalid eval-file /test-fixtures/network-policy.php inactive
 wp --url=http://integration.invalid eval-file /test-fixtures/network-mu-lifecycle.php prepare
 wp plugin activate safety-passwords --network --quiet
-wp --url=http://integration.invalid eval-file /test-fixtures/network-mu-lifecycle.php ordinary-pending
+wp --url=http://integration.invalid eval-file /test-fixtures/network-mu-lifecycle.php ordinary-complete
 cp /test-fixtures/mu-loader.php wp-content/mu-plugins/10-safety-passwords-test-loader.php
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-mu-lifecycle.php initial
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-mu-lifecycle.php repeat

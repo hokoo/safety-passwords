@@ -10,9 +10,15 @@ class UserScope {
 	 * @param array|null $candidates User IDs, or null to query all candidates.
 	 * @return array User IDs in their original order and type.
 	 */
-	public static function userIds( ?array $candidates = null ): array {
+	public static function userIds( ?array $candidates = null, ?callable $progress = null ): array {
+		if ( $progress ) {
+			$progress();
+		}
 		if ( null === $candidates ) {
 			$candidates = get_users( [ 'fields' => 'ids', 'blog_id' => is_multisite() ? 0 : get_current_blog_id() ] );
+		}
+		if ( $progress ) {
+			$progress();
 		}
 
 		// A single network owns the global user table, including unassigned accounts.
@@ -23,12 +29,18 @@ class UserScope {
 		$network_id = get_current_network_id();
 		$users = [];
 		foreach ( $candidates as $user_id ) {
+			if ( $progress ) {
+				$progress();
+			}
 			// Include memberships on inactive sites; WordPress omits them by default.
 			foreach ( get_blogs_of_user( $user_id, true ) as $site ) {
 				if ( (int) $site->site_id === $network_id ) {
 					$users[] = $user_id;
 					break;
 				}
+			}
+			if ( $progress ) {
+				$progress();
 			}
 		}
 
