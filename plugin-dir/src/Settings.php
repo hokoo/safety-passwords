@@ -19,9 +19,8 @@ class Settings {
 		add_action( 'admin_footer', [ self::class, 'renderInitializeForm' ] );
 		add_action( 'admin_notices', [ self::class, 'renderInitializeNotice' ] );
 		add_action( 'network_admin_notices', [ self::class, 'renderInitializeNotice' ] );
-
-		// Ensure the cron event is scheduled when visiting the plugin settings page.
-		add_action( 'toplevel_page_crb_carbon_fields_container_safety_passwords', [ Cron::class, 'ensureEvent' ] );
+		add_action( 'admin_notices', [ self::class, 'renderInitializationStatus' ] );
+		add_action( 'network_admin_notices', [ self::class, 'renderInitializationStatus' ] );
 
 		self::$optionPrefix = PLUGIN_SLUG . '_';
 	}
@@ -124,6 +123,45 @@ class Settings {
 		} elseif ( 'failed' === $_GET['safety_passwords_init'] ) {
 			General::echoNotice( __( 'Safety Passwords initialization did not complete. Retry after checking the site state.', 'safety-passwords' ), 'error' );
 		}
+	}
+
+	/** Display only fixed diagnostic text to users who can repair this network. */
+	public static function renderInitializationStatus(): void {
+		if ( ! self::onSettingsPage() || ! self::canManage() ) {
+			return;
+		}
+		$status = Activation::initializationStatus();
+		$labels = [
+			'pending' => __( 'Pending. Initialization will run on the next suitable request.', 'safety-passwords' ),
+			'running' => __( 'Running. Another request is initializing Safety Passwords; try again after it finishes.', 'safety-passwords' ),
+			'ready' => __( 'Ready. Initialization completed for this version.', 'safety-passwords' ),
+			'retryable_error' => __( 'Retryable error. Use Initialize / repair to retry now.', 'safety-passwords' ),
+		];
+		$categories = [
+			'capability' => __( 'Capability repair failed.', 'safety-passwords' ),
+			'history' => __( 'History verification failed.', 'safety-passwords' ),
+			'schedule' => __( 'Schedule repair failed.', 'safety-passwords' ),
+			'general' => __( 'Initialization failed.', 'safety-passwords' ),
+		];
+		$message = $labels[ $status['state'] ];
+		if ( 'retryable_error' === $status['state'] ) {
+			$message .= ' ' . $categories[ $status['category'] ];
+			if ( $status['next_retry'] > time() ) {
+				$message .= ' ' . sprintf(
+					/* translators: %s: local date and time of the next automatic initialization attempt. */
+					__( 'Next automatic retry: %s.', 'safety-passwords' ),
+					get_date_from_gmt( gmdate( 'Y-m-d H:i:s', $status['next_retry'] ), get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) )
+				);
+			}
+		}
+		$schedule = [
+			'healthy' => __( 'Healthy.', 'safety-passwords' ),
+			'degraded' => __( 'Degraded. Use Initialize / repair to repair the schedule.', 'safety-passwords' ),
+			'verification_due' => __( 'Verification due. The network schedule will be checked on an eligible request.', 'safety-passwords' ),
+		];
+		$schedule_health = Activation::scheduleHealth();
+		echo '<div class="notice notice-info"><p>' . esc_html__( 'Initialization:', 'safety-passwords' ) . ' ' . esc_html( $message ) . '</p>';
+		echo '<p>' . esc_html__( 'Schedule:', 'safety-passwords' ) . ' ' . esc_html( $schedule[ $schedule_health ] ) . '</p></div>';
 	}
 
 	public static function processInitialize(): void {

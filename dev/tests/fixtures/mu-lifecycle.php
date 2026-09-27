@@ -1,5 +1,6 @@
 <?php
 
+use iTRON\SafetyPasswords\Activation;
 use iTRON\SafetyPasswords\Controller;
 use iTRON\SafetyPasswords\Cron;
 use iTRON\SafetyPasswords\Settings;
@@ -27,6 +28,7 @@ $history_key = 'safety-passwords_stop-list';
 $state_key = 'safety_passwords_integration_mu_state';
 $complete_key = 'safety_passwords_mu_initialized';
 $lock_key = 'safety_passwords_mu_initializing';
+$failure_key = 'safety_passwords_initialization_failure';
 $deferred_hook = 'itron/safety-passwords/activate';
 $cron_hook = 'safety_passwords_periodically_reset';
 
@@ -77,12 +79,29 @@ if ( 'failed' === $stage ) {
 	sp_mu_assert( ! get_option( $complete_key ) && ! get_option( $lock_key ), 'failed history write marked setup complete or held lock' );
 	sp_mu_assert( $history_count === 0 && sp_mu_events( $cron_hook ) === 0, 'failed history write advanced setup' );
 	sp_mu_assert( sp_mu_events( $deferred_hook ) === 0, 'expired lock was not reclaimed' );
+	$status = Activation::initializationStatus();
+	$failure = get_option( $failure_key );
+	sp_mu_assert( 'retryable_error' === $status['state'] && 'history' === $status['category'] && is_array( $failure ) && 1 === $failure['attempts'], 'failed history write did not record retryable status' );
+	sp_mu_assert( $status['next_retry'] === $failure['next_retry'] && $failure['next_retry'] >= time() + 240 && $failure['next_retry'] <= time() + 300, 'failed history write did not set first retry cooldown' );
 	echo "PASS: failed MU history write remained retryable\n";
+	return;
+}
+
+if ( 'cooldown' === $stage ) {
+	$status = Activation::initializationStatus();
+	$failure = get_option( $failure_key );
+	sp_mu_assert( 'retryable_error' === $status['state'] && 'history' === $status['category'] && is_array( $failure ) && 1 === $failure['attempts'], 'cooldown status changed on the next request' );
+	sp_mu_assert( $status['next_retry'] === $failure['next_retry'] && $failure['next_retry'] > time(), 'cooldown ended before retry was due' );
+	sp_mu_assert( ! get_option( $complete_key ) && ! get_option( $lock_key ) && $history_count === 0 && sp_mu_events( $cron_hook ) === 0, 'cooldown allowed premature initialization' );
+	$failure['next_retry'] = time() - 1;
+	sp_mu_assert( update_option( $failure_key, $failure, false ), 'retry due setup' );
+	echo "PASS: MU cooldown deferred retry until due\n";
 	return;
 }
 
 sp_mu_assert( did_action( 'carbon_fields_fields_registered' ) > 0 && function_exists( 'carbon_get_theme_option' ), 'Carbon was not ready' );
 sp_mu_assert( get_option( $complete_key ) && ! get_option( $lock_key ), 'completion or lock state incorrect' );
+sp_mu_assert( ! get_option( $failure_key ), 'completed setup retained retry state' );
 sp_mu_assert( $history_count === 1, 'history not seeded exactly once' );
 sp_mu_assert( get_role( 'administrator' )->has_cap( Settings::MANAGE_CAPS ), 'administrator capability missing' );
 sp_mu_assert( sp_mu_events( $cron_hook ) === 1 && wp_get_schedule( $cron_hook ) === 'twicedaily', 'main scheduler incorrect' );

@@ -6,6 +6,7 @@ class Activation {
 	private const MU_COMPLETE_OPTION = 'safety_passwords_mu_initialized';
 	private const MU_LOCK_OPTION = 'safety_passwords_mu_initializing';
 	private const VERSION_OPTION = 'safety_passwords_initialized_version';
+	private const INIT_FAILURE_OPTION = 'safety_passwords_initialization_failure';
 	private const SCHEDULE_VERIFIED_OPTION = 'safety_passwords_schedule_verified_at';
 	private const SCHEDULE_FAILURE_OPTION = 'safety_passwords_schedule_failure';
 	private const MU_LOCK_SECONDS = 900;
@@ -50,6 +51,7 @@ class Activation {
 		self::onMainSite( function () {
 			delete_option( self::MU_COMPLETE_OPTION );
 			delete_option( self::VERSION_OPTION );
+			delete_option( self::INIT_FAILURE_OPTION );
 			delete_option( self::SCHEDULE_VERIFIED_OPTION );
 			delete_option( self::SCHEDULE_FAILURE_OPTION );
 		} );
@@ -83,7 +85,7 @@ class Activation {
 				return;
 			}
 		}
-		self::initialize( true );
+		self::initialize( ! ( defined( 'DOING_CRON' ) && DOING_CRON ) );
 	}
 
 	public static function processDeactivationHook(): void {
@@ -92,6 +94,7 @@ class Activation {
 			wp_clear_scheduled_hook( 'itron/safety-passwords/activate' );
 			delete_option( self::MU_COMPLETE_OPTION );
 			delete_option( self::VERSION_OPTION );
+			delete_option( self::INIT_FAILURE_OPTION );
 			delete_option( self::SCHEDULE_VERIFIED_OPTION );
 			delete_option( self::SCHEDULE_FAILURE_OPTION );
 		} );
@@ -100,7 +103,7 @@ class Activation {
 	/** Complete pending ordinary activation or migration on the next full load. */
 	public static function bootstrapOrdinary(): void {
 		self::onMainSite( function () {
-			if ( get_option( self::VERSION_OPTION ) !== VERSION ) {
+			if ( ! self::isCurrentVersionComplete() ) {
 				self::initialize();
 				return;
 			}
@@ -134,8 +137,12 @@ class Activation {
 	}
 
 	private static function initializeOnMainSite( bool $force ): bool {
+		$failure = self::currentInitializationFailure();
 		if ( ! $force && self::isCurrentVersionComplete() ) {
 			return true;
+		}
+		if ( ! $force && $failure && $failure['next_retry'] > time() ) {
+			return false;
 		}
 		$owner = self::claimMuLock();
 		if ( null === $owner ) {
@@ -146,12 +153,15 @@ class Activation {
 				throw new \RuntimeException();
 			}
 		};
+		$category = 'general';
+		$complete = false;
 		try {
 			$progress();
 			wp_cache_delete( self::VERSION_OPTION, 'options' );
 			wp_cache_delete( self::MU_COMPLETE_OPTION, 'options' );
 			wp_cache_delete( 'notoptions', 'options' );
 			if ( ! $force && self::isCurrentVersionComplete() ) {
+				$complete = true;
 				return true;
 			}
 			// A failed forced repair must be retried by the next normal request.
@@ -167,11 +177,17 @@ class Activation {
 			if ( wp_next_scheduled( 'itron/safety-passwords/activate' ) ) {
 				return false;
 			}
+			$category = 'capability';
 			self::grantCaps( $progress );
-			Controller::putCurrentPasswordsToStopList( $progress );
-			if ( ! self::currentPasswordsHaveHistory( $progress ) || ! self::capabilitiesAreGranted( $progress ) || ! self::renewMuLock( $owner ) ) {
+			if ( ! self::capabilitiesAreGranted( $progress ) ) {
 				return false;
 			}
+			$category = 'history';
+			Controller::putCurrentPasswordsToStopList( $progress );
+			if ( ! self::currentPasswordsHaveHistory( $progress ) || ! self::renewMuLock( $owner ) ) {
+				return false;
+			}
+			$category = 'schedule';
 			Cron::ensureEvent( false, $progress );
 			if ( ! Cron::isNormalized( $progress ) || ! self::renewMuLock( $owner ) ) {
 				return false;
@@ -179,6 +195,7 @@ class Activation {
 			if ( ! self::recordScheduleVerified() ) {
 				return false;
 			}
+			$category = 'general';
 			if ( self::$mustUse && ! get_option( self::MU_COMPLETE_OPTION ) ) {
 				if ( ! update_option( self::MU_COMPLETE_OPTION, 1, false ) && ! get_option( self::MU_COMPLETE_OPTION ) ) {
 					return false;
@@ -197,13 +214,69 @@ class Activation {
 		} catch ( \Throwable $error ) {
 			return false;
 		} finally {
+			if ( self::renewMuLock( $owner ) && self::ownsMuLock( $owner ) ) {
+				if ( $complete ) {
+					delete_option( self::INIT_FAILURE_OPTION );
+				} else {
+					// A failed repair must not retain a ready marker.
+					if ( get_option( self::VERSION_OPTION ) === VERSION ) {
+						delete_option( self::VERSION_OPTION );
+					}
+					self::recordInitializationFailure( $category );
+				}
+			}
 			self::releaseMuLock( $owner );
 		}
 	}
 
+	/** @internal Safe current-network status for the protected settings page. */
+	public static function initializationStatus(): array {
+		$status = [ 'state' => 'pending', 'category' => '', 'next_retry' => 0 ];
+		self::onMainSite( function () use ( &$status ) {
+			$failure = self::currentInitializationFailure();
+			$lease = get_option( self::MU_LOCK_OPTION, '' );
+			if ( is_string( $lease ) && (int) strtok( $lease, ':' ) > time() ) {
+				$status['state'] = 'running';
+			} elseif ( self::isCurrentVersionComplete() ) {
+				$status['state'] = 'ready';
+			} elseif ( $failure ) {
+				$status = [ 'state' => 'retryable_error', 'category' => $failure['category'], 'next_retry' => $failure['next_retry'] ];
+			}
+		} );
+		return $status;
+	}
+
+	private static function currentInitializationFailure(): ?array {
+		$failure = get_option( self::INIT_FAILURE_OPTION );
+		if ( ! is_array( $failure ) ) {
+			return null;
+		}
+		if ( ! isset( $failure['version'] ) || $failure['version'] !== VERSION ) {
+			delete_option( self::INIT_FAILURE_OPTION );
+			return null;
+		}
+		if ( ! isset( $failure['category'], $failure['attempts'], $failure['next_retry'] ) ) {
+			return null;
+		}
+		$category = in_array( $failure['category'], [ 'capability', 'history', 'schedule', 'general' ], true ) ? $failure['category'] : 'general';
+		return [ 'category' => $category, 'attempts' => max( 0, min( 5, (int) $failure['attempts'] ) ), 'next_retry' => (int) $failure['next_retry'] ];
+	}
+
+	private static function recordInitializationFailure( string $category ): void {
+		$previous = self::currentInitializationFailure();
+		$attempts = min( 5, ( $previous ? $previous['attempts'] : 0 ) + 1 );
+		update_option( self::INIT_FAILURE_OPTION, [
+			'category' => in_array( $category, [ 'capability', 'history', 'schedule' ], true ) ? $category : 'general',
+			'attempts' => $attempts,
+			'version' => VERSION,
+			'next_retry' => time() + min( 300 * ( 2 ** ( $attempts - 1 ) ), HOUR_IN_SECONDS ),
+		], false );
+	}
+
 	private static function isCurrentVersionComplete(): bool {
 		return get_option( self::VERSION_OPTION ) === VERSION
-			&& ( ! self::$mustUse || get_option( self::MU_COMPLETE_OPTION ) );
+			&& ( ! self::$mustUse || get_option( self::MU_COMPLETE_OPTION ) )
+			&& null === self::currentInitializationFailure();
 	}
 
 	private static function capabilitiesAreGranted( ?callable $progress = null ): bool {

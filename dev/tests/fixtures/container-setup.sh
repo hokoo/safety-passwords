@@ -47,6 +47,7 @@ wp --user=integration-admin eval-file /test-fixtures/activation.php lease
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-migration.php prepare
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-migration.php verify
 run_schedule_recovery --user=integration-admin
+wp --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php status
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php admin
 wp safety init
 wp safety init
@@ -86,11 +87,13 @@ wp eval-file /test-fixtures/mu-lifecycle.php held
 cp /test-fixtures/mu-history-blocker.php wp-content/mu-plugins/05-safety-passwords-test-history-blocker.php
 wp eval-file /test-fixtures/mu-lifecycle.php failed
 rm wp-content/mu-plugins/05-safety-passwords-test-history-blocker.php
+wp eval-file /test-fixtures/mu-lifecycle.php cooldown
 wp eval-file /test-fixtures/mu-lifecycle.php initial
 wp eval-file /test-fixtures/mu-lifecycle.php repeat
 wp eval-file /test-fixtures/lifecycle-migration.php prepare
 wp eval-file /test-fixtures/lifecycle-migration.php verify
 run_schedule_recovery
+wp --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php status
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php admin
 wp safety init
 wp eval-file /test-fixtures/lifecycle-controls.php cli-verify
@@ -131,6 +134,7 @@ wp --url=http://integration.invalid --user=integration-admin eval-file /test-fix
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php ordinary-network-prepare
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php ordinary-network-verify
 run_schedule_recovery --url=http://integration.invalid
+wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php status
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php schedule-legacy
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php schedule-legacy-verify
 run_cli_password_phase network http://integration.invalid 1 "$cli_subsite_id" "$cli_subsite_url"
@@ -145,6 +149,7 @@ wp --url=http://integration.invalid --user=integration-admin eval-file /test-fix
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php prepare
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php verify
 run_schedule_recovery --url=http://integration.invalid
+wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php status
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php schedule-legacy
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php schedule-legacy-verify
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php admin

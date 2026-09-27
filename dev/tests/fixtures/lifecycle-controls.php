@@ -16,6 +16,7 @@ sp_controls_assert( class_exists( Activation::class ) && did_action( 'carbon_fie
 $stage = $args[0] ?? '';
 $lock = 'safety_passwords_mu_initializing';
 $version = 'safety_passwords_initialized_version';
+$failure_key = 'safety_passwords_initialization_failure';
 
 if ( 'cli-lock' === $stage ) {
 	sp_controls_assert( add_option( $lock, ( time() + 900 ) . ':fixture', '', false ), 'lock setup' );
@@ -39,9 +40,94 @@ if ( 'network-verify' === $stage ) {
 	delete_option( 'safety_passwords_integration_controls_snapshot' );
 	return;
 }
+if ( 'status' === $stage ) {
+	sp_controls_assert( get_option( $version ) === \iTRON\SafetyPasswords\VERSION && Activation::scheduleHealth() === 'healthy', 'status fixture requires ready initialization' );
+	$original_user = get_current_user_id();
+	$_GET['page'] = 'crb_carbon_fields_container_safety_passwords';
+	ob_start();
+	Settings::renderInitializationStatus();
+	$ready_notice = ob_get_clean();
+	sp_controls_assert( Activation::initializationStatus()['state'] === 'ready' && false !== strpos( $ready_notice, 'Ready.' ) && false !== strpos( $ready_notice, 'Healthy.' ), 'ready status or schedule UI' );
+	wp_set_current_user( 0 );
+	ob_start();
+	Settings::renderInitializationStatus();
+	Settings::renderInitializeForm();
+	sp_controls_assert( '' === ob_get_clean(), 'unauthorized status or repair form visible' );
+	wp_set_current_user( $original_user );
+
+	wp_unschedule_hook( Cron::EVENT_NAME );
+	sp_controls_assert( Activation::initializationStatus()['state'] === 'ready' && Activation::scheduleHealth() === 'degraded', 'schedule health incorrectly changed initialization status' );
+	delete_option( $version );
+	sp_controls_assert( Activation::initializationStatus()['state'] === 'pending', 'pending status' );
+	ob_start();
+	Settings::renderInitializationStatus();
+	sp_controls_assert( false !== strpos( ob_get_clean(), 'Pending.' ), 'pending status UI' );
+	sp_controls_assert( add_option( $lock, ( time() + 900 ) . ':fixture', '', false ), 'running lock setup' );
+	sp_controls_assert( Activation::initializationStatus()['state'] === 'running', 'running status' );
+	ob_start();
+	Settings::renderInitializationStatus();
+	sp_controls_assert( false !== strpos( ob_get_clean(), 'Running.' ), 'running status UI' );
+	delete_option( $lock );
+
+	$frozen_cron = get_option( 'cron' );
+	$block_cron = function () use ( $frozen_cron ) { return $frozen_cron; };
+	add_filter( 'pre_update_option_cron', $block_cron );
+	$traversals = 0;
+	$count_traversal = function () use ( &$traversals ) { ++$traversals; };
+	add_action( 'itron/safety-passwords/capabilities/set', $count_traversal );
+	sp_controls_assert( ! Activation::initialize() && $traversals === 1, 'initial failure was not attempted once' );
+	$status = Activation::initializationStatus();
+	$failure = get_option( $failure_key );
+	sp_controls_assert( $status['state'] === 'retryable_error' && $status['category'] === 'schedule' && $status['next_retry'] >= time() + 290 && $status['next_retry'] <= time() + 300, 'retryable status or first cooldown' );
+	sp_controls_assert( is_array( $failure ) && array_keys( $failure ) === [ 'category', 'attempts', 'version', 'next_retry' ] && $failure['category'] === 'schedule' && $failure['attempts'] === 1 && $failure['version'] === \iTRON\SafetyPasswords\VERSION, 'failure record contains unexpected fields' );
+	global $wpdb;
+	$autoload = $wpdb->get_var( $wpdb->prepare( "SELECT autoload FROM {$wpdb->options} WHERE option_name = %s", $failure_key ) );
+	sp_controls_assert( ! in_array( $autoload, [ 'yes', 'on', 'auto-on' ], true ), 'failure record autoloaded' );
+	ob_start();
+	Settings::renderInitializationStatus();
+	$error_notice = ob_get_clean();
+	sp_controls_assert( false !== strpos( $error_notice, 'Retryable error.' ) && false !== strpos( $error_notice, 'Schedule repair failed.' ) && false !== strpos( $error_notice, 'Next automatic retry:' ) && false === strpos( $error_notice, ':fixture' ), 'unsafe or incomplete failure UI' );
+	$tainted = $failure;
+	$tainted['category'] = 'untrusted-category';
+	update_option( $failure_key, $tainted, false );
+	ob_start();
+	Settings::renderInitializationStatus();
+	$sanitized_notice = ob_get_clean();
+	sp_controls_assert( false !== strpos( $sanitized_notice, 'Initialization failed.' ) && false === strpos( $sanitized_notice, 'untrusted-category' ), 'untrusted failure category reached UI' );
+	update_option( $failure_key, $failure, false );
+	if ( false !== has_action( 'wp_loaded', [ Activation::class, 'bootstrapMustUse' ] ) ) {
+		Activation::bootstrapMustUse();
+	} else {
+		Activation::bootstrapOrdinary();
+	}
+	sp_controls_assert( $traversals === 1 && get_option( $failure_key ) === $failure, 'automatic cooldown allowed heavy retry' );
+	sp_controls_assert( add_option( $lock, ( time() + 900 ) . ':fixture', '', false ), 'manual lock setup' );
+	sp_controls_assert( ! Activation::initialize( true ) && $traversals === 1 && get_option( $failure_key ) === $failure, 'manual repair ignored active lease' );
+	delete_option( $lock );
+	$failure['attempts'] = 4;
+	$failure['next_retry'] = time() - 1;
+	update_option( $failure_key, $failure, false );
+	if ( false !== has_action( 'wp_loaded', [ Activation::class, 'bootstrapMustUse' ] ) ) {
+		Activation::bootstrapMustUse();
+	} else {
+		Activation::bootstrapOrdinary();
+	}
+	$capped = get_option( $failure_key );
+	sp_controls_assert( $traversals === 2 && is_array( $capped ) && $capped['attempts'] === 5 && $capped['next_retry'] >= time() + 3590 && $capped['next_retry'] <= time() + 3600, 'due automatic retry or one-hour cap' );
+	remove_filter( 'pre_update_option_cron', $block_cron );
+	sp_controls_assert( Activation::initialize( true ) && $traversals === 3 && Activation::initializationStatus()['state'] === 'ready' && ! get_option( $failure_key ), 'manual retry did not bypass cooldown or clear failure' );
+	remove_action( 'itron/safety-passwords/capabilities/set', $count_traversal );
+	sp_controls_assert( Activation::scheduleHealth() === 'healthy', 'schedule did not recover' );
+	update_option( $failure_key, [ 'category' => 'general', 'attempts' => 5, 'version' => 'previous-version', 'next_retry' => time() + 3600 ], false );
+	sp_controls_assert( Activation::initializationStatus()['state'] === 'ready' && false === get_option( $failure_key ), 'version change retained old failure' );
+	echo "PASS: lifecycle initialization status\n";
+	return;
+}
 
 sp_controls_assert( 'admin' === $stage, 'unknown stage' );
 sp_controls_assert( false !== has_action( 'admin_post_safety_passwords_initialize', [ Settings::class, 'processInitialize' ] ), 'handler not registered' );
+sp_controls_assert( false === has_action( 'toplevel_page_crb_carbon_fields_container_safety_passwords', [ Cron::class, 'ensureEvent' ] ), 'settings page registers unleased schedule repair' );
+sp_controls_assert( false !== has_action( 'wp_loaded', [ Activation::class, 'bootstrapMustUse' ] ) || false !== has_action( 'wp_loaded', [ Activation::class, 'bootstrapOrdinary' ] ), 'scheduled health bootstrap not registered' );
 $original_user = get_current_user_id();
 sp_controls_assert( $original_user > 0, 'admin user missing' );
 $_GET['page'] = 'crb_carbon_fields_container_safety_passwords';
