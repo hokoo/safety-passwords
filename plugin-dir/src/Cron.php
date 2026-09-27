@@ -64,7 +64,8 @@ class Cron {
 		return $main_site_seen && $normalized;
 	}
 
-	private static function currentSiteEventIsCanonical(): bool {
+	/** Cheap check for the current site's one canonical event; callers select the main site. */
+	public static function currentSiteEventIsCanonical(): bool {
 		return 1 === self::currentSiteEventCount()
 			&& false !== wp_next_scheduled( self::EVENT_NAME )
 			&& 'twicedaily' === wp_get_schedule( self::EVENT_NAME );

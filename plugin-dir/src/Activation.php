@@ -6,7 +6,10 @@ class Activation {
 	private const MU_COMPLETE_OPTION = 'safety_passwords_mu_initialized';
 	private const MU_LOCK_OPTION = 'safety_passwords_mu_initializing';
 	private const VERSION_OPTION = 'safety_passwords_initialized_version';
+	private const SCHEDULE_VERIFIED_OPTION = 'safety_passwords_schedule_verified_at';
+	private const SCHEDULE_FAILURE_OPTION = 'safety_passwords_schedule_failure';
 	private const MU_LOCK_SECONDS = 900;
+	private const SCHEDULE_VERIFICATION_SECONDS = 86400;
 	private static bool $mustUse = false;
 
 	public static function init(): void {
@@ -47,6 +50,8 @@ class Activation {
 		self::onMainSite( function () {
 			delete_option( self::MU_COMPLETE_OPTION );
 			delete_option( self::VERSION_OPTION );
+			delete_option( self::SCHEDULE_VERIFIED_OPTION );
+			delete_option( self::SCHEDULE_FAILURE_OPTION );
 		} );
 		self::grantCaps();
 
@@ -87,6 +92,8 @@ class Activation {
 			wp_clear_scheduled_hook( 'itron/safety-passwords/activate' );
 			delete_option( self::MU_COMPLETE_OPTION );
 			delete_option( self::VERSION_OPTION );
+			delete_option( self::SCHEDULE_VERIFIED_OPTION );
+			delete_option( self::SCHEDULE_FAILURE_OPTION );
 		} );
 	}
 
@@ -95,15 +102,17 @@ class Activation {
 		self::onMainSite( function () {
 			if ( get_option( self::VERSION_OPTION ) !== VERSION ) {
 				self::initialize();
+				return;
 			}
+			self::repairScheduleIfDue();
 		} );
 	}
 
-	/** MU bootstrap also recovers an event removed after completed initialization. */
+	/** MU bootstrap shares the ready-state schedule check with ordinary loading. */
 	public static function bootstrapMustUse(): void {
 		self::onMainSite( function () {
 			if ( self::isCurrentVersionComplete() ) {
-				self::ensureMainEvent();
+				self::repairScheduleIfDue();
 				return;
 			}
 			self::initialize();
@@ -165,6 +174,9 @@ class Activation {
 			}
 			Cron::ensureEvent( false, $progress );
 			if ( ! Cron::isNormalized( $progress ) || ! self::renewMuLock( $owner ) ) {
+				return false;
+			}
+			if ( ! self::recordScheduleVerified() ) {
 				return false;
 			}
 			if ( self::$mustUse && ! get_option( self::MU_COMPLETE_OPTION ) ) {
@@ -260,10 +272,82 @@ class Activation {
 		return true;
 	}
 
-	private static function ensureMainEvent(): void {
-		if ( ! wp_next_scheduled( Cron::EVENT_NAME ) || 'twicedaily' !== wp_get_schedule( Cron::EVENT_NAME ) ) {
-			Cron::ensureEvent();
+	/** Healthy requires a canonical main event and a recent successful network pass. */
+	public static function scheduleHealth(): string {
+		$health = 'verification_due';
+		self::onMainSite( function () use ( &$health ) {
+			if ( ! Cron::currentSiteEventIsCanonical() || get_option( self::SCHEDULE_FAILURE_OPTION ) ) {
+				$health = 'degraded';
+			} elseif ( ! self::scheduleVerificationDue() ) {
+				$health = 'healthy';
+			}
+		} );
+		return $health;
+	}
+
+	/** Ready-state repair never traverses users and uses the initialization lease. */
+	private static function repairScheduleIfDue(): void {
+		if ( Cron::currentSiteEventIsCanonical() && ! self::scheduleVerificationDue() && ! get_option( self::SCHEDULE_FAILURE_OPTION ) ) {
+			return;
 		}
+		$failure = get_option( self::SCHEDULE_FAILURE_OPTION );
+		if ( is_array( $failure ) && isset( $failure['next_retry'] ) && (int) $failure['next_retry'] > time() ) {
+			return;
+		}
+		$owner = self::claimMuLock();
+		if ( null === $owner ) {
+			return;
+		}
+		$progress = function () use ( &$owner ) {
+			if ( ! self::renewMuLock( $owner ) ) {
+				throw new \RuntimeException();
+			}
+		};
+		try {
+			$progress();
+			if ( ! self::isCurrentVersionComplete() ) {
+				return;
+			}
+			if ( Cron::currentSiteEventIsCanonical() && ! self::scheduleVerificationDue() && ! get_option( self::SCHEDULE_FAILURE_OPTION ) ) {
+				return;
+			}
+			// A repaired main event is not proof that a full network pass finished.
+			delete_option( self::SCHEDULE_VERIFIED_OPTION );
+			Cron::ensureEvent( false, $progress );
+			if ( ! Cron::isNormalized( $progress ) || ! self::renewMuLock( $owner ) || ! self::recordScheduleVerified() ) {
+				self::recordScheduleFailure( $owner );
+			}
+		} catch ( \Throwable $error ) {
+			self::recordScheduleFailure( $owner );
+		} finally {
+			self::releaseMuLock( $owner );
+		}
+	}
+
+	private static function scheduleVerificationDue(): bool {
+		$verified = get_option( self::SCHEDULE_VERIFIED_OPTION );
+		return ! is_numeric( $verified ) || (int) $verified > time() || (int) $verified <= time() - self::SCHEDULE_VERIFICATION_SECONDS;
+	}
+
+	private static function recordScheduleVerified(): bool {
+		$now = time();
+		if ( ! update_option( self::SCHEDULE_VERIFIED_OPTION, $now, false ) && (int) get_option( self::SCHEDULE_VERIFIED_OPTION ) !== $now ) {
+			return false;
+		}
+		return delete_option( self::SCHEDULE_FAILURE_OPTION ) || false === get_option( self::SCHEDULE_FAILURE_OPTION );
+	}
+
+	private static function recordScheduleFailure( string $owner ): void {
+		if ( ! self::ownsMuLock( $owner ) ) {
+			return;
+		}
+		$failure = get_option( self::SCHEDULE_FAILURE_OPTION );
+		$previous = is_array( $failure ) && isset( $failure['attempts'] ) ? (int) $failure['attempts'] : 0;
+		$attempts = min( 5, $previous + 1 );
+		update_option( self::SCHEDULE_FAILURE_OPTION, [
+			'attempts' => $attempts,
+			'next_retry' => time() + min( 300 * ( 2 ** ( $attempts - 1 ) ), HOUR_IN_SECONDS ),
+		], false );
 	}
 
 	/** Claim the private main-site option row atomically, or take over an expired lease. */

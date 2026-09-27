@@ -5,6 +5,16 @@ wp() {
   command wp --allow-root "$@"
 }
 
+run_schedule_recovery() {
+  wp "$@" eval-file /test-fixtures/lifecycle-migration.php schedule-missing
+  wp "$@" eval-file /test-fixtures/lifecycle-migration.php schedule-missing-verify-duplicate
+  wp "$@" eval-file /test-fixtures/lifecycle-migration.php schedule-duplicate-verify-wrong
+  wp "$@" eval-file /test-fixtures/lifecycle-migration.php schedule-wrong-verify-stable
+  sleep 2
+  wp "$@" eval-file /test-fixtures/lifecycle-migration.php schedule-stable-verify
+  wp "$@" eval-file /test-fixtures/lifecycle-migration.php schedule-failure-retry
+}
+
 wp_version=$1
 installed_version=$(wp core version)
 if [ "$installed_version" != "$wp_version" ]; then
@@ -36,6 +46,7 @@ wp --user=integration-admin eval-file /test-fixtures/activation.php repair
 wp --user=integration-admin eval-file /test-fixtures/activation.php lease
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-migration.php prepare
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-migration.php verify
+run_schedule_recovery --user=integration-admin
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php admin
 wp safety init
 wp safety init
@@ -79,6 +90,7 @@ wp eval-file /test-fixtures/mu-lifecycle.php initial
 wp eval-file /test-fixtures/mu-lifecycle.php repeat
 wp eval-file /test-fixtures/lifecycle-migration.php prepare
 wp eval-file /test-fixtures/lifecycle-migration.php verify
+run_schedule_recovery
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php admin
 wp safety init
 wp eval-file /test-fixtures/lifecycle-controls.php cli-verify
@@ -118,6 +130,9 @@ wp plugin activate safety-passwords --network --quiet
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-policy.php active
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php ordinary-network-prepare
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php ordinary-network-verify
+run_schedule_recovery --url=http://integration.invalid
+wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php schedule-legacy
+wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php schedule-legacy-verify
 run_cli_password_phase network http://integration.invalid 1 "$cli_subsite_id" "$cli_subsite_url"
 wp plugin deactivate safety-passwords --network --quiet
 wp --url=http://integration.invalid eval-file /test-fixtures/network-policy.php inactive
@@ -129,6 +144,9 @@ wp --url=http://integration.invalid --user=integration-admin eval-file /test-fix
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-mu-lifecycle.php repeat
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php prepare
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php verify
+run_schedule_recovery --url=http://integration.invalid
+wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php schedule-legacy
+wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php schedule-legacy-verify
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php admin
 wp safety init --url=http://integration.invalid
 wp eval-file /test-fixtures/lifecycle-controls.php cli-verify --url=http://integration.invalid
@@ -145,6 +163,8 @@ wp --url=http://sp-second-network.example.invalid/ eval-file /test-fixtures/life
 wp safety init --url=http://sp-second-network.example.invalid/
 wp --url=http://sp-second-network.example.invalid/ eval-file /test-fixtures/lifecycle-controls.php cli-verify
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-controls.php network-verify
+wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php schedule-legacy
+wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php schedule-legacy-verify
 wp --url=http://sp-second-network.example.invalid/ --user=integration-admin eval-file /test-fixtures/network-boundaries-reverse.php second
 wp --url=http://sp-second-network.example.invalid/boundary-subsite/ eval-file /test-fixtures/network-boundaries-reverse.php subsite
 wp --url=http://sp-second-network.example.invalid/ eval-file /test-fixtures/network-boundaries-reverse.php second-reset
