@@ -49,6 +49,11 @@ wp --user=integration-admin eval-file /test-fixtures/lifecycle-migration.php ver
 run_schedule_recovery --user=integration-admin
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php status
 wp --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php admin
+wp config set WP_HTTP_BLOCK_EXTERNAL true --raw --quiet
+wp config set WP_ACCESSIBLE_HOSTS '127.0.0.1' --quiet
+wp eval-file /test-fixtures/http-admin-post.php single
+wp config delete WP_ACCESSIBLE_HOSTS --quiet
+wp config delete WP_HTTP_BLOCK_EXTERNAL --quiet
 wp safety init
 wp safety init
 wp eval-file /test-fixtures/lifecycle-controls.php cli-verify
@@ -153,6 +158,11 @@ wp --url=http://integration.invalid --user=integration-admin eval-file /test-fix
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php schedule-legacy
 wp --url=http://integration.invalid eval-file /test-fixtures/lifecycle-migration.php schedule-legacy-verify
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/lifecycle-controls.php admin
+wp config set WP_HTTP_BLOCK_EXTERNAL true --raw --quiet
+wp config set WP_ACCESSIBLE_HOSTS '127.0.0.1' --quiet
+wp --url=http://integration.invalid eval-file /test-fixtures/http-admin-post.php network
+wp config delete WP_ACCESSIBLE_HOSTS --quiet
+wp config delete WP_HTTP_BLOCK_EXTERNAL --quiet
 wp safety init --url=http://integration.invalid
 wp eval-file /test-fixtures/lifecycle-controls.php cli-verify --url=http://integration.invalid
 wp --url=http://integration.invalid --user=integration-admin eval-file /test-fixtures/network-boundaries.php prepare

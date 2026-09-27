@@ -10,7 +10,7 @@ class Settings {
 	public static string $optionPrefix;
 	const MANAGE_CAPS = 'safety_passwords_manage_options';
 	private const INIT_ACTION = 'safety_passwords_initialize';
-	private const SETTINGS_PAGE = 'crb_carbon_fields_container_safety_passwords';
+	private const SETTINGS_PAGE = 'crb_carbon_fields_container_safety_passwords.php';
 
 	public static function init(): void {
 		add_action( 'carbon_fields_register_fields', [ self::class, 'createOptions' ] );

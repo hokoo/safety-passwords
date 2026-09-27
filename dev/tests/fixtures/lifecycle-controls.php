@@ -43,7 +43,7 @@ if ( 'network-verify' === $stage ) {
 if ( 'status' === $stage ) {
 	sp_controls_assert( get_option( $version ) === \iTRON\SafetyPasswords\VERSION && Activation::scheduleHealth() === 'healthy', 'status fixture requires ready initialization' );
 	$original_user = get_current_user_id();
-	$_GET['page'] = 'crb_carbon_fields_container_safety_passwords';
+	$_GET['page'] = 'crb_carbon_fields_container_safety_passwords.php';
 	ob_start();
 	Settings::renderInitializationStatus();
 	$ready_notice = ob_get_clean();
@@ -126,11 +126,11 @@ if ( 'status' === $stage ) {
 
 sp_controls_assert( 'admin' === $stage, 'unknown stage' );
 sp_controls_assert( false !== has_action( 'admin_post_safety_passwords_initialize', [ Settings::class, 'processInitialize' ] ), 'handler not registered' );
-sp_controls_assert( false === has_action( 'toplevel_page_crb_carbon_fields_container_safety_passwords', [ Cron::class, 'ensureEvent' ] ), 'settings page registers unleased schedule repair' );
+sp_controls_assert( false === has_action( 'toplevel_page_crb_carbon_fields_container_safety_passwords.php', [ Cron::class, 'ensureEvent' ] ), 'settings page registers unleased schedule repair' );
 sp_controls_assert( false !== has_action( 'wp_loaded', [ Activation::class, 'bootstrapMustUse' ] ) || false !== has_action( 'wp_loaded', [ Activation::class, 'bootstrapOrdinary' ] ), 'scheduled health bootstrap not registered' );
 $original_user = get_current_user_id();
 sp_controls_assert( $original_user > 0, 'admin user missing' );
-$_GET['page'] = 'crb_carbon_fields_container_safety_passwords';
+$_GET['page'] = 'crb_carbon_fields_container_safety_passwords.php';
 ob_start();
 Settings::renderInitializeForm();
 $form = ob_get_clean();
@@ -155,7 +155,7 @@ function sp_controls_request( $method, $user_id, $valid_nonce, $expected ) {
 		if ( 'rejected' === $expected ) {
 			sp_controls_assert( 'request rejected' === $location, 'request was not rejected' );
 		} else {
-			sp_controls_assert( false !== strpos( $location, 'page=crb_carbon_fields_container_safety_passwords' ) && false !== strpos( $location, 'safety_passwords_init=' . $expected ), 'wrong fixed redirect' );
+			sp_controls_assert( false !== strpos( $location, 'page=crb_carbon_fields_container_safety_passwords.php' ) && false !== strpos( $location, 'safety_passwords_init=' . $expected ), 'wrong fixed redirect' );
 		}
 	}
 }
