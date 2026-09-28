@@ -41,7 +41,10 @@ def command(args, cwd=ROOT):
 
 
 def git(*args, cwd=ROOT):
-    return command(["git", "-c", "credential.helper=", *args], cwd=cwd)
+    # Release checks use disposable repositories. Detached maintenance can outlive
+    # a Git command and race with their TemporaryDirectory cleanup.
+    return command(["git", "-c", "credential.helper=", "-c", "maintenance.auto=false",
+                    *args], cwd=cwd)
 
 
 def check_sha(source_sha, repo=ROOT):
