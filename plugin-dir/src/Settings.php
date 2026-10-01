@@ -134,6 +134,10 @@ class Settings {
 			return;
 		}
 		$status = Activation::initializationStatus();
+		$schedule_health = Activation::scheduleHealth();
+		if ( 'ready' === $status['state'] && in_array( $schedule_health, [ 'healthy', 'verification_due' ], true ) ) {
+			return;
+		}
 		$labels = [
 			'pending' => __( 'Pending. Initialization will run on the next suitable request.', 'safety-passwords' ),
 			'running' => __( 'Running. Another request is initializing Safety Passwords; try again after it finishes.', 'safety-passwords' ),
@@ -162,7 +166,6 @@ class Settings {
 			'degraded' => __( 'Degraded. Use Initialize / repair to repair the schedule.', 'safety-passwords' ),
 			'verification_due' => __( 'Verification due. The network schedule will be checked on an eligible request.', 'safety-passwords' ),
 		];
-		$schedule_health = Activation::scheduleHealth();
 		echo '<div class="notice notice-info"><p>' . esc_html__( 'Initialization:', 'safety-passwords' ) . ' ' . esc_html( $message ) . '</p>';
 		echo '<p>' . esc_html__( 'Schedule:', 'safety-passwords' ) . ' ' . esc_html( $schedule[ $schedule_health ] ) . '</p></div>';
 	}

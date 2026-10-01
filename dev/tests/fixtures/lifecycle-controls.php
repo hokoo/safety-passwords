@@ -47,7 +47,19 @@ if ( 'status' === $stage ) {
 	ob_start();
 	Settings::renderInitializationStatus();
 	$ready_notice = ob_get_clean();
-	sp_controls_assert( Activation::initializationStatus()['state'] === 'ready' && false !== strpos( $ready_notice, 'Ready.' ) && false !== strpos( $ready_notice, 'Healthy.' ), 'ready status or schedule UI' );
+	sp_controls_assert( Activation::initializationStatus()['state'] === 'ready' && '' === $ready_notice, 'healthy ready status UI visible' );
+	$verified_at = get_option( 'safety_passwords_schedule_verified_at' );
+	delete_option( 'safety_passwords_schedule_verified_at' );
+	sp_controls_assert( Activation::scheduleHealth() === 'verification_due', 'verification due setup' );
+	ob_start();
+	Settings::renderInitializationStatus();
+	sp_controls_assert( '' === ob_get_clean(), 'verification due status UI visible' );
+	update_option( 'safety_passwords_schedule_verified_at', $verified_at, false );
+	$_GET['page'] = 'unrelated-settings.php';
+	ob_start();
+	Settings::renderInitializationStatus();
+	sp_controls_assert( '' === ob_get_clean(), 'status UI visible on another page' );
+	$_GET['page'] = 'crb_carbon_fields_container_safety_passwords.php';
 	wp_set_current_user( 0 );
 	ob_start();
 	Settings::renderInitializationStatus();
@@ -57,6 +69,10 @@ if ( 'status' === $stage ) {
 
 	wp_unschedule_hook( Cron::EVENT_NAME );
 	sp_controls_assert( Activation::initializationStatus()['state'] === 'ready' && Activation::scheduleHealth() === 'degraded', 'schedule health incorrectly changed initialization status' );
+	ob_start();
+	Settings::renderInitializationStatus();
+	$degraded_notice = ob_get_clean();
+	sp_controls_assert( false !== strpos( $degraded_notice, 'Ready.' ) && false !== strpos( $degraded_notice, 'Degraded.' ), 'degraded schedule warning hidden' );
 	delete_option( $version );
 	sp_controls_assert( Activation::initializationStatus()['state'] === 'pending', 'pending status' );
 	ob_start();

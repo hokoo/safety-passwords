@@ -1,5 +1,9 @@
 # Safety Passwords 1.5 local release candidate
 
+## 2026-10-01 settings status follow-up
+
+Status: completed locally for v1.5. The settings-page diagnostic panel is hidden when initialization is ready and the schedule is healthy or awaiting routine automatic verification. Pending, running, retryable-error, and degraded-schedule states remain visible; the Repair action and authorization are unchanged. The scope excludes lifecycle behavior and publication. The existing lifecycle and HTTP admin-post fixtures cover the normal, degraded, and access paths. PHP lint passed for all three changed PHP files, `git diff --check` passed, and `bash dev/tests/run.sh php82-wp712` passed on WordPress 7.1.2/PHP 8.2.33, including single-site and multisite controls. The first runtime attempt found an obsolete HTTP fixture expectation, which was repaired; a later sandboxed network preflight created no resources, and the authorized isolated rerun passed. Publication remains a separate gate.
+
 The authorized 2026-09-24 follow-up adds standard WP-CLI password-change bookkeeping with an explicit strength/reuse bypass disclaimer. Its separate task contracts, final five-target runtime results and delivery/QA state are recorded in `2026-09-24-cli-password-changes.md`; earlier acceptance below does not substitute for that follow-up's gate.
 
 This candidate branches from accepted E1 commit `80c1a69213f838aa23197cba71e30a02e275301d`. It adds the WordPress 7.1.2/PHP 8.5 and 8.2 platform adaptation from `dfe9073818cdb83f005df7cd1f06dbef725edc91`, the coherent 1.5 plugin version/Stable tag, and release documentation. The earlier 1.4.3 candidate at `257234d` passed its local verification; the separately reviewed 1.5 metadata update passed PHP lint, consistency and diff checks. Current automation scope and evidence are recorded in `2026-09-23-release-automation.md`.

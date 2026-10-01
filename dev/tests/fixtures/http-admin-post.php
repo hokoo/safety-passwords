@@ -149,7 +149,7 @@ function sp_http_nonce_from_settings( $base, $path, &$cookies ) {
 	}
 	$html = sp_http_response_body( $response );
 	sp_http_assert( 1 === preg_match( '/<form\b[^>]*id="safety-passwords-initialize-form"[^>]*>(.*?)<\/form>/s', $html, $form ), 'repair form on settings page' );
-	sp_http_assert( false !== strpos( $html, 'Initialization:' ) && false !== strpos( $html, 'Schedule:' ), 'repair status on settings page' );
+	sp_http_assert( false === strpos( $html, 'Initialization:' ) && false === strpos( $html, 'Schedule:' ), 'repair status hidden on healthy settings page' );
 	sp_http_assert( 1 === preg_match( '/name="_wpnonce"\s+value="([^"]+)"/', $form[1], $match ), 'repair nonce on settings page' );
 	return $match[1];
 }
