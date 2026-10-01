@@ -82,6 +82,12 @@ Periodic resets run through WP-Cron, which needs WordPress requests or an extern
 
 To remove an MU installation, remove its loader and deactivate any separately active ordinary copy. Removing the loader does not run deactivation; manually remove the `safety_passwords_periodically_reset` event from the main site and any legacy subsites. Saved settings and password history remain. If the same-version loader returns, its retained initialization marker does not trigger a full history pass. Use **Initialize / repair** or `wp safety init --url=<main-site-url>` to include current passwords for accounts added while the plugin was absent. Changes made while its code was absent cannot be reconstructed.
 
+== Frequently Asked Questions ==
+
+= When should I use Initialize / repair? =
+
+Normally, no manual action is needed: initialization and schedule checks run automatically on eligible WordPress requests. Use the button on the settings page when its status reports a retryable initialization error or a degraded schedule and you want to retry immediately. Also use it after restoring a must-use installation that was removed and returned without a plugin version change, so current passwords for accounts added during the gap enter the history. The action repairs administrator capabilities, current password history, and the periodic schedule for the current network; it does not rotate or reset passwords. It cannot reconstruct password changes made while the plugin was absent. If the action fails, check the site state and try again after resolving the cause; automatic retries remain available.
+
 
 == Changelog ==
 = 1.5 =

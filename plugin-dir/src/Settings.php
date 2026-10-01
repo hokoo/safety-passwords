@@ -37,10 +37,6 @@ class Settings {
 			$option_page->get_datastore()->set_object_id( get_current_network_id() );
 		}
 		$settings    = [];
-		$settings[] = Field::make( 'html', self::$optionPrefix . 'initialize_control' )
-			->set_html( '<p>' . esc_html__( 'Repair administrator capabilities, current password history, and the periodic schedule.', 'safety-passwords' ) . '</p>'
-				. '<button type="submit" class="button button-secondary" form="safety-passwords-initialize-form">'
-				. esc_html__( 'Initialize / repair', 'safety-passwords' ) . '</button>' );
 		// Force Password Reset after registration
 		if ( ! self::isOverloaded( 'rp_on_registration' ) ) {
 			$settings[] = Field::make( 'checkbox', self::$optionPrefix . 'rp_on_registration', __( 'Change After Registration', 'safety-passwords' ) )
@@ -78,6 +74,13 @@ class Settings {
 			$settings[] = Field::make( 'html', self::$optionPrefix . 'reset_interval_disabled' )
 			                   ->set_html( '[' . esc_html( (string) $value ) . ']' . __( "<b>Force Password Reset Interval (days)</b> Overwritten by constant<br/>", 'safety-passwords' ) );
 		}
+		$settings[] = Field::make( 'html', self::$optionPrefix . 'initialize_control' )
+			->set_html( '<h2>' . esc_html__( 'Maintenance', 'safety-passwords' ) . '</h2>'
+				. '<p>' . esc_html__( 'Initialization and schedule checks normally run automatically. Use this button to retry after an initialization error, repair a degraded schedule, or restore history after a same-version must-use installation returns.', 'safety-passwords' ) . '</p>'
+				. '<button type="submit" class="button button-secondary" form="safety-passwords-initialize-form">'
+				. esc_html__( 'Initialize / repair', 'safety-passwords' ) . '</button>'
+				. '<p><a href="' . esc_url( 'https://wordpress.org/plugins/safety-passwords/#faq' ) . '">'
+				. esc_html__( 'When should I use Initialize / repair? Read the plugin FAQ.', 'safety-passwords' ) . '</a></p>' );
 
 
 		$option_page->add_fields( $settings )
