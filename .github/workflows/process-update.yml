@@ -1,82 +1,244 @@
 name: Process Update
+
 on:
   release:
-    types:
-      - published
+    types: [published]
 
-permissions: write-all
+permissions:
+  contents: read
+
+concurrency:
+  group: safety-passwords-release-delivery
+  cancel-in-progress: false
+
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-22.04
+    outputs:
+      source_sha: ${{ steps.source.outputs.source_sha }}
+      trusted_checker_sha: ${{ steps.source.outputs.trusted_checker_sha }}
     steps:
-      - name: Check out the source code
-        uses: actions/checkout@v3
-
-      - uses: shivammathur/setup-php@v2
-        name: Set up PHP
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          php-version: 8.2
+          ref: master
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify public tag, master ancestry and plugin version
+        id: source
+        shell: bash
+        env:
+          EVENT_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          set -euo pipefail
+          trusted_checker_sha=$(git rev-parse HEAD)
+          kind=()
+          if [[ "$IS_PRERELEASE" == true ]]; then kind+=(--prerelease); fi
+          python3 dev/release/source.py verify --source-sha "$EVENT_SHA" \
+            --tag "$RELEASE_TAG" --publication "${kind[@]}"
+          echo "source_sha=$EVENT_SHA" >> "$GITHUB_OUTPUT"
+          echo "trusted_checker_sha=$trusted_checker_sha" >> "$GITHUB_OUTPUT"
+
+  integration:
+    needs: verify
+    uses: ./.github/workflows/test-integration.yml
+    with:
+      source_sha: ${{ needs.verify.outputs.source_sha }}
+      release_tag: ${{ github.event.release.tag_name }}
+      prerelease: ${{ github.event.release.prerelease }}
+    permissions:
+      contents: read
+
+  deliver-stable:
+    needs: [verify, integration]
+    if: ${{ github.event.release.prerelease == false }}
+    runs-on: ubuntu-22.04
+    environment:
+      name: wordpress-org
+      url: https://wordpress.org/plugins/safety-passwords/
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.verify.outputs.trusted_checker_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
           coverage: none
-
-      - name: Install PHP Dependencies
-        uses: ramsey/composer-install@v2
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          working-directory: plugin-dir
-          composer-options: "--no-dev"
-
-      - name: Remove all files and directories except plugin directory
-        run: |
-          find . -mindepth 1 -maxdepth 1 -not -name 'plugin-dir' -not -name '.git' -exec rm -rf {} +
-
-      # Rename plugin directory to the plugin name
-      - run: mv plugin-dir safety-passwords
-
-      # Zip the plugin directory
-      - name: Zip the plugin directory
-        run: zip -r safety-passwords-wp-plugin.zip safety-passwords
-
-      - name: Upload Release Artifact
-        uses: AButler/upload-release-assets@v3.0
-        with:
-          files: ./safety-passwords-wp-plugin.zip
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set target branch
-        id: branch
-        run: echo "branch_name=$([ '${{ github.event.release.prerelease }}' == 'true' ] && echo 'pre-release' || echo 'stable')" >> "$GITHUB_OUTPUT"
-
-      - name: Push to release branch
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          export TEMP_DIR=$(mktemp -d)
-          cp -r safety-passwords/* "$TEMP_DIR/"
-
-          git fetch origin ${{ steps.branch.outputs.branch_name }} || true
-          git worktree add --force dist-worktree origin/${{ steps.branch.outputs.branch_name }}
-
-          rm -rf dist-worktree/*
-          cp -r "$TEMP_DIR/"* dist-worktree/
-
-          cd dist-worktree
-          git add -f vendor
-          git add .
-          git commit -m "Update plugin build from release ${{ github.event.release.tag_name }}" || echo "No changes to commit"
-          git push origin HEAD:${{ steps.branch.outputs.branch_name }}
+          artifact-ids: ${{ needs.integration.outputs.artifact_id }}
+          path: ${{ runner.temp }}/release-package
+          merge-multiple: true
+      - name: Reverify public source and exact tested artifact
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Prepare version without "v"
-        id: clean_version
-        run: echo "value=${{ github.event.release.tag_name }}" | sed -E 's/^(v-?|version-)//' >> $GITHUB_OUTPUT
-
-      - name: Deploy to WordPress.org (production only)
+          SOURCE_SHA: ${{ needs.verify.outputs.source_sha }}
+          TRUSTED_SHA: ${{ needs.verify.outputs.trusted_checker_sha }}
+          TESTED_SHA: ${{ needs.integration.outputs.source_sha }}
+          ZIP_SHA256: ${{ needs.integration.outputs.zip_sha256 }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" == "$TESTED_SHA" && "$(git rev-parse HEAD)" == "$TRUSTED_SHA" ]]
+          kind=()
+          if [[ "$IS_PRERELEASE" == true ]]; then kind+=(--prerelease); fi
+          python3 dev/release/source.py verify --source-sha "$SOURCE_SHA" \
+            --tag "$RELEASE_TAG" --publication "${kind[@]}"
+          python3 dev/release/package.py validate --source-sha "$SOURCE_SHA" \
+            --tag "$RELEASE_TAG" "${kind[@]}" --expected-zip-sha256 "$ZIP_SHA256" \
+            --zip "$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.zip" \
+            --manifest "$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.manifest.json"
+      - name: Preflight existing assets, mirror and stable SVN without writes
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ needs.verify.outputs.source_sha }}
+          ZIP_SHA256: ${{ needs.integration.outputs.zip_sha256 }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          kind=()
+          branch=stable
+          if [[ "$IS_PRERELEASE" == true ]]; then kind+=(--prerelease); branch=pre-release; fi
+          zip="$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.zip"
+          manifest="$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.manifest.json"
+          python3 dev/release/asset.py preflight --source-sha "$SOURCE_SHA" --tag "$RELEASE_TAG" \
+            --zip "$zip" --manifest "$manifest" --expected-zip-sha256 "$ZIP_SHA256" "${kind[@]}"
+          python3 dev/release/mirror.py preflight --source-sha "$SOURCE_SHA" --tag "$RELEASE_TAG" \
+            --zip "$zip" --manifest "$manifest" --expected-zip-sha256 "$ZIP_SHA256" \
+            --branch "$branch" "${kind[@]}"
+          if [[ "$IS_PRERELEASE" == false ]]; then
+            version=$(python3 - "$manifest" <<'PY'
+          import json, sys
+          print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])
+          PY
+          )
+            python3 dev/release/svn.py --source-sha "$SOURCE_SHA" --tag "$RELEASE_TAG" \
+              --version "$version" --zip "$zip" --manifest "$manifest" \
+              --expected-zip-sha256 "$ZIP_SHA256" --dry-run
+          fi
+      - name: Deploy stable package to WordPress.org SVN
         if: ${{ github.event.release.prerelease == false }}
-        uses: 10up/action-wordpress-plugin-deploy@stable
+        shell: bash
         env:
-          SVN_USERNAME: ${{ secrets.WPORG_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
-          BUILD_DIR: ./safety-passwords
-          SLUG: safety-passwords
-          VERSION: ${{ steps.clean_version.outputs.value }}
+          SOURCE_SHA: ${{ needs.verify.outputs.source_sha }}
+          ZIP_SHA256: ${{ needs.integration.outputs.zip_sha256 }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          WPORG_USERNAME: ${{ secrets.WPORG_USERNAME }}
+          WPORG_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
+        run: |
+          set -euo pipefail
+          zip="$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.zip"
+          manifest="$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.manifest.json"
+          version=$(python3 - "$manifest" <<'PY'
+          import json, sys
+          print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])
+          PY
+          )
+          python3 dev/release/source.py verify --source-sha "$SOURCE_SHA" \
+            --tag "$RELEASE_TAG" --publication
+          python3 dev/release/svn.py --source-sha "$SOURCE_SHA" --tag "$RELEASE_TAG" \
+            --version "$version" --zip "$zip" --manifest "$manifest" \
+            --expected-zip-sha256 "$ZIP_SHA256"
+      - name: Publish exact GitHub assets and update distribution branch
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ needs.verify.outputs.source_sha }}
+          ZIP_SHA256: ${{ needs.integration.outputs.zip_sha256 }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          kind=()
+          branch=stable
+          if [[ "$IS_PRERELEASE" == true ]]; then kind+=(--prerelease); branch=pre-release; fi
+          zip="$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.zip"
+          manifest="$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.manifest.json"
+          python3 dev/release/source.py verify --source-sha "$SOURCE_SHA" \
+            --tag "$RELEASE_TAG" --publication "${kind[@]}"
+          python3 dev/release/asset.py publish --source-sha "$SOURCE_SHA" --tag "$RELEASE_TAG" \
+            --zip "$zip" --manifest "$manifest" --expected-zip-sha256 "$ZIP_SHA256" "${kind[@]}"
+          python3 dev/release/mirror.py publish --source-sha "$SOURCE_SHA" --tag "$RELEASE_TAG" \
+            --zip "$zip" --manifest "$manifest" --expected-zip-sha256 "$ZIP_SHA256" \
+            --branch "$branch" "${kind[@]}"
+
+  deliver-prerelease:
+    needs: [verify, integration]
+    if: ${{ github.event.release.prerelease == true }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.verify.outputs.trusted_checker_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-ids: ${{ needs.integration.outputs.artifact_id }}
+          path: ${{ runner.temp }}/release-package
+          merge-multiple: true
+      - name: Reverify prerelease source and exact tested artifact
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ needs.verify.outputs.source_sha }}
+          TRUSTED_SHA: ${{ needs.verify.outputs.trusted_checker_sha }}
+          TESTED_SHA: ${{ needs.integration.outputs.source_sha }}
+          ZIP_SHA256: ${{ needs.integration.outputs.zip_sha256 }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" == "$TESTED_SHA" && "$(git rev-parse HEAD)" == "$TRUSTED_SHA" ]]
+          python3 dev/release/source.py verify --source-sha "$SOURCE_SHA" \
+            --tag "$RELEASE_TAG" --publication --prerelease
+          python3 dev/release/package.py validate --source-sha "$SOURCE_SHA" \
+            --tag "$RELEASE_TAG" --prerelease --expected-zip-sha256 "$ZIP_SHA256" \
+            --zip "$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.zip" \
+            --manifest "$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.manifest.json"
+      - name: Preflight prerelease assets and mirror without writes
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ needs.verify.outputs.source_sha }}
+          ZIP_SHA256: ${{ needs.integration.outputs.zip_sha256 }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          zip="$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.zip"
+          manifest="$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.manifest.json"
+          python3 dev/release/asset.py preflight --source-sha "$SOURCE_SHA" --tag "$RELEASE_TAG" \
+            --zip "$zip" --manifest "$manifest" --expected-zip-sha256 "$ZIP_SHA256" --prerelease
+          python3 dev/release/mirror.py preflight --source-sha "$SOURCE_SHA" --tag "$RELEASE_TAG" \
+            --zip "$zip" --manifest "$manifest" --expected-zip-sha256 "$ZIP_SHA256" \
+            --branch pre-release --prerelease
+      - name: Publish exact prerelease assets and update distribution branch
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ needs.verify.outputs.source_sha }}
+          ZIP_SHA256: ${{ needs.integration.outputs.zip_sha256 }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          zip="$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.zip"
+          manifest="$RUNNER_TEMP/release-package/safety-passwords-wp-plugin.manifest.json"
+          python3 dev/release/source.py verify --source-sha "$SOURCE_SHA" \
+            --tag "$RELEASE_TAG" --publication --prerelease
+          python3 dev/release/asset.py publish --source-sha "$SOURCE_SHA" --tag "$RELEASE_TAG" \
+            --zip "$zip" --manifest "$manifest" --expected-zip-sha256 "$ZIP_SHA256" --prerelease
+          python3 dev/release/mirror.py publish --source-sha "$SOURCE_SHA" --tag "$RELEASE_TAG" \
+            --zip "$zip" --manifest "$manifest" --expected-zip-sha256 "$ZIP_SHA256" \
+            --branch pre-release --prerelease

@@ -1,0 +1,154 @@
+name: WordPress integration
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      release_tag:
+        required: false
+        type: string
+        default: ''
+      prerelease:
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      artifact_id:
+        value: ${{ jobs.package.outputs.artifact_id }}
+      zip_sha256:
+        value: ${{ jobs.package.outputs.zip_sha256 }}
+      source_sha:
+        value: ${{ jobs.package.outputs.source_sha }}
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-22.04
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      zip_sha256: ${{ steps.identity.outputs.zip_sha256 }}
+      source_sha: ${{ steps.identity.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.source_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - name: Validate and build committed release source
+        id: identity
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          IS_PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          source_sha=$(git rev-parse HEAD)
+          release_args=()
+          if [[ -n "$RELEASE_TAG" ]]; then release_args+=(--tag "$RELEASE_TAG"); fi
+          if [[ "$IS_PRERELEASE" == true ]]; then release_args+=(--prerelease); fi
+          python3 dev/release/source.py verify --source-sha "$source_sha" "${release_args[@]}"
+          output_dir=$(mktemp -d /tmp/sp-package.XXXXXX)
+          python3 dev/release/package.py build --source-sha "$source_sha" --output-dir "$output_dir" "${release_args[@]}"
+          python3 dev/release/package.py validate --source-sha "$source_sha" \
+            --zip "$output_dir/safety-passwords-wp-plugin.zip" \
+            --manifest "$output_dir/safety-passwords-wp-plugin.manifest.json" "${release_args[@]}"
+          python3 dev/release/tests/check_package.py --source-sha "$source_sha" \
+            --zip "$output_dir/safety-passwords-wp-plugin.zip" \
+            --manifest "$output_dir/safety-passwords-wp-plugin.manifest.json"
+          zip_sha256=$(sha256sum "$output_dir/safety-passwords-wp-plugin.zip" | cut -d ' ' -f 1)
+          python3 dev/release/tests/check_delivery.py --source-sha "$source_sha" \
+            --zip "$output_dir/safety-passwords-wp-plugin.zip" \
+            --manifest "$output_dir/safety-passwords-wp-plugin.manifest.json" \
+            --expected-zip-sha256 "$zip_sha256" "${release_args[@]}"
+          cp "$output_dir/safety-passwords-wp-plugin.zip" "$RUNNER_TEMP/"
+          cp "$output_dir/safety-passwords-wp-plugin.manifest.json" "$RUNNER_TEMP/"
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "zip_sha256=$zip_sha256" >> "$GITHUB_OUTPUT"
+      - name: Upload exact validated package
+        id: upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: safety-passwords-release-package
+          path: |
+            ${{ runner.temp }}/safety-passwords-wp-plugin.zip
+            ${{ runner.temp }}/safety-passwords-wp-plugin.manifest.json
+          if-no-files-found: error
+          retention-days: 7
+
+  cron:
+    needs: package
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: php85-wp712
+            php: '8.5'
+          - target: php82-wp712
+            php: '8.2'
+          - target: php74-wp50
+            php: '7.4'
+          - target: php74-wp68
+            php: '7.4'
+          - target: php82-wp68
+            php: '8.2'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.package.outputs.source_sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-ids: ${{ needs.package.outputs.artifact_id }}
+          path: ${{ runner.temp }}/package
+          merge-multiple: true
+      - name: Verify and extract the tested package
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ needs.package.outputs.source_sha }}
+          ZIP_SHA256: ${{ needs.package.outputs.zip_sha256 }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          IS_PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          release_args=()
+          if [[ -n "$RELEASE_TAG" ]]; then release_args+=(--tag "$RELEASE_TAG"); fi
+          if [[ "$IS_PRERELEASE" == true ]]; then release_args+=(--prerelease); fi
+          python3 dev/release/package.py validate --source-sha "$SOURCE_SHA" \
+            --zip "$RUNNER_TEMP/package/safety-passwords-wp-plugin.zip" \
+            --manifest "$RUNNER_TEMP/package/safety-passwords-wp-plugin.manifest.json" \
+            --expected-zip-sha256 "$ZIP_SHA256" "${release_args[@]}"
+          mkdir -p "$RUNNER_TEMP/tested-plugin"
+          python3 - "$RUNNER_TEMP/package/safety-passwords-wp-plugin.zip" "$RUNNER_TEMP/tested-plugin" <<'PY'
+          import sys
+          import zipfile
+          with zipfile.ZipFile(sys.argv[1]) as archive:
+              archive.extractall(sys.argv[2])
+          PY
+          echo "SP_TEST_PLUGIN_SOURCE=$RUNNER_TEMP/tested-plugin/safety-passwords" >> "$GITHUB_ENV"
+      - name: Lint tested plugin and fixtures
+        shell: bash
+        run: |
+          find "$SP_TEST_PLUGIN_SOURCE" -path "$SP_TEST_PLUGIN_SOURCE/vendor" -prune -o -name '*.php' -print0 | xargs -0 -r -n 1 php -l
+          find dev/tests/fixtures -name '*.php' -print0 | xargs -0 -r -n 1 php -l
+          bash -n dev/tests/run.sh
+          bash -n dev/tests/fixtures/container-setup.sh
+          sh -n dev/tests/fixtures/download-stream.sh
+          sh -n dev/tests/fixtures/stream-phase.sh
+      - name: Isolated WordPress integration against the validated package
+        run: bash dev/tests/run.sh "${{ matrix.target }}"
